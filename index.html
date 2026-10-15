@@ -1,51 +1,131 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ma voiture et moi</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 24px;
-      background: #f4f6f8;
-      color: #1b2a3a;
-      text-align: center;
-    }
-    h1 { margin-top: 40px; }
-    p { font-size: 18px; }
-    button {
-      display: block;
-      width: 100%;
-      max-width: 320px;
-      margin: 16px auto;
-      padding: 18px;
-      font-size: 18px;
-      border: none;
-      border-radius: 12px;
-      background: #1565c0;
-      color: white;
-    }
-    button.pro { background: #2e7d32; }
-    #message { margin-top: 30px; font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma voiture et moi</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
+  .page { display: none; padding: 20px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+  h1, h2 { text-align: center; }
+  .centre { text-align: center; }
+  button.grand { display: block; width: 100%; margin: 14px 0; padding: 18px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
+  button.vert { background: #2e7d32; }
+  button.gris { background: #90a4ae; }
+  button.retour { background: none; border: none; color: #1565c0; font-size: 16px; padding: 8px 0; }
+  input { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin: 10px 0; }
+  .carte { background: #fff; border-radius: 12px; padding: 14px; margin: 10px 0; border-left: 8px solid #999; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .carte.rouge { border-left-color: #c62828; }
+  .carte.orange { border-left-color: #ef6c00; }
+  .titre { font-size: 18px; font-weight: bold; }
+  .niveau { font-size: 14px; font-weight: bold; margin: 4px 0; }
+  .rouge .niveau { color: #c62828; }
+  .orange .niveau { color: #ef6c00; }
+  .detail { display: none; margin-top: 8px; line-height: 1.4; }
+  .carte.ouverte .detail { display: block; }
+  .note { font-size: 13px; color: #546e7a; text-align: center; margin-top: 20px; }
+</style>
 </head>
 <body>
+
+<!-- ECRAN 1 : choix du profil -->
+<div id="accueil" class="page active centre">
   <h1>🚗 Ma voiture et moi</h1>
   <p>Comprends tes voyants, suis ton entretien, mieux comprends les pannes.</p>
   <p>Qui es-tu ?</p>
+  <button class="grand" onclick="choisir('Particulier')">👤 Particulier</button>
+  <button class="grand vert" onclick="choisir('Mécanicien (PRO)')">🔧 Mécanicien (PRO)</button>
+</div>
 
-  <button onclick="choisir('Particulier')">👤 Particulier</button>
-  <button class="pro" onclick="choisir('Mécanicien (PRO)')">🔧 Mécanicien (PRO)</button>
+<!-- ECRAN 2 : menu -->
+<div id="menu" class="page">
+  <button class="retour" onclick="aller('accueil')">← Changer de profil</button>
+  <h2 id="bienvenue"></h2>
+  <button class="grand" onclick="aller('voyants')">🚦 Guide des voyants</button>
+  <button class="grand gris">🛠️ Suivi de l'entretien (bientôt)</button>
+  <button class="grand gris">🔍 Comprendre les pannes (bientôt)</button>
+</div>
 
-  <div id="message"></div>
+<!-- ECRAN 3 : guide des voyants -->
+<div id="voyants" class="page">
+  <button class="retour" onclick="aller('menu')">← Retour au menu</button>
+  <h2>🚦 Guide des voyants</h2>
+  <input type="text" placeholder="Chercher un voyant (huile, batterie...)" oninput="afficher(this.value)">
+  <div id="liste"></div>
+  <p class="note">Explications générales. Les symboles peuvent changer selon la marque. En cas de doute, fais vérifier ta voiture dans un garage.</p>
+</div>
 
-  <script>
-    function choisir(profil) {
-      document.getElementById('message').textContent =
-        'Profil choisi : ' + profil + ' ✅';
-    }
-  </script>
+<script>
+  var voyants = [
+    { icone: "🛢️", nom: "Pression d'huile", niveau: "rouge",
+      sens: "La pression d'huile du moteur est trop basse : le moteur n'est plus bien lubrifié.",
+      action: "Arrête-toi en sécurité et coupe le moteur tout de suite. Vérifie le niveau d'huile. Ne roule pas tant que le voyant est allumé : le moteur peut être détruit." },
+    { icone: "🌡️", nom: "Température du moteur", niveau: "rouge",
+      sens: "Le moteur surchauffe (liquide de refroidissement trop chaud ou en manque).",
+      action: "Arrête-toi, coupe le moteur et laisse refroidir. N'ouvre jamais le bouchon du radiateur à chaud. Vérifie le niveau de liquide une fois le moteur froid." },
+    { icone: "🔋", nom: "Batterie / charge", niveau: "rouge",
+      sens: "La batterie ne se recharge pas : alternateur, courroie ou câbles en cause.",
+      action: "Coupe ce qui consomme (radio, clim). Roule le moins possible jusqu'au garage : la voiture peut s'arrêter quand la batterie sera vide." },
+    { icone: "🛑", nom: "Frein", niveau: "rouge",
+      sens: "Soit le frein à main est serré, soit le niveau de liquide de frein est bas, soit il y a un défaut dans le circuit de freinage.",
+      action: "Vérifie d'abord que le frein à main est bien desserré. Si le voyant reste allumé, ne roule pas : fais contrôler les freins." },
+    { icone: "💥", nom: "Airbag", niveau: "rouge",
+      sens: "Défaut dans le système airbag ou ceintures : les airbags peuvent ne pas se déclencher en cas d'accident.",
+      action: "Fais contrôler la voiture au garage rapidement." },
+    { icone: "⚙️", nom: "Voyant moteur (check engine)", niveau: "orange",
+      sens: "Le calculateur a détecté une anomalie dans le moteur ou dans l'antipollution.",
+      action: "Voyant fixe : tu peux rouler doucement, mais fais diagnostiquer la voiture bientôt. Voyant clignotant : réduis la vitesse et va vite au garage, le catalyseur risque d'être abîmé." },
+    { icone: "🅰️", nom: "ABS", niveau: "orange",
+      sens: "Le système anti-blocage des roues est en défaut.",
+      action: "Le freinage normal marche encore, mais les roues peuvent se bloquer en freinage fort. Roule prudemment et fais contrôler." },
+    { icone: "⭕", nom: "Pression des pneus", niveau: "orange",
+      sens: "Un ou plusieurs pneus sont sous-gonflés (ou crevés).",
+      action: "Arrête-toi et regarde tes pneus. Vérifie la pression et gonfle-les. Si un pneu perd de l'air, change la roue." },
+    { icone: "🌀", nom: "Préchauffage (diesel)", niveau: "orange",
+      sens: "Les bougies de préchauffage chauffent le moteur avant le démarrage.",
+      action: "Attends que le voyant s'éteigne avant de démarrer. S'il s'allume ou clignote en roulant, il y a un défaut moteur : va au garage." },
+    { icone: "🌫️", nom: "Filtre à particules (diesel)", niveau: "orange",
+      sens: "Le filtre à particules est en train de se boucher.",
+      action: "Roule 15 à 20 minutes à vitesse stable (sur route, pas en ville) pour le nettoyer. Si le voyant reste allumé, va au garage." },
+    { icone: "🚗", nom: "ESP / antipatinage", niveau: "orange",
+      sens: "Clignotant : le système t'aide car la route glisse. Fixe : il est coupé ou en défaut.",
+      action: "Si ça clignote, ralentis. Si c'est fixe, fais contrôler." },
+    { icone: "⛽", nom: "Carburant bas", niveau: "orange",
+      sens: "Il reste peu de carburant dans le réservoir.",
+      action: "Fais le plein bientôt." }
+  ];
+
+  function aller(id) {
+    document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function choisir(profil) {
+    document.getElementById('bienvenue').textContent = 'Profil : ' + profil;
+    aller('menu');
+  }
+
+  function afficher(filtre) {
+    var f = (filtre || '').toLowerCase();
+    var liste = document.getElementById('liste');
+    liste.innerHTML = '';
+    voyants.forEach(function (v) {
+      if (v.nom.toLowerCase().indexOf(f) === -1) return;
+      var d = document.createElement('div');
+      d.className = 'carte ' + v.niveau;
+      d.onclick = function () { d.classList.toggle('ouverte'); };
+      var etat = v.niveau === 'rouge' ? '🔴 Danger : arrête-toi' : '🟠 Attention : à faire vérifier';
+      d.innerHTML =
+        '<div class="titre">' + v.icone + ' ' + v.nom + '</div>' +
+        '<div class="niveau">' + etat + '</div>' +
+        '<div class="detail"><b>Ça veut dire :</b> ' + v.sens + '<br><br><b>Que faire :</b> ' + v.action + '</div>';
+      liste.appendChild(d);
+    });
+  }
+
+  afficher('');
+</script>
 </body>
 </html>
