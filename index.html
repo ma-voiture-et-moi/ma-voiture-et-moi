@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ma voiture et moi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f4f6f8;
+      color: #1b2a3a;
+      text-align: center;
+    }
+    h1 { margin-top: 40px; }
+    p { font-size: 18px; }
+    button {
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      margin: 16px auto;
+      padding: 18px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background: #1565c0;
+      color: white;
+    }
+    button.pro { background: #2e7d32; }
+    #message { margin-top: 30px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🚗 Ma voiture et moi</h1>
+  <p>Comprends tes voyants, suis ton entretien, mieux comprends les pannes.</p>
+  <p>Qui es-tu ?</p>
+
+  <button onclick="choisir('Particulier')">👤 Particulier</button>
+  <button class="pro" onclick="choisir('Mécanicien (PRO)')">🔧 Mécanicien (PRO)</button>
+
+  <div id="message"></div>
+
+  <script>
+    function choisir(profil) {
+      document.getElementById('message').textContent =
+        'Profil choisi : ' + profil + ' ✅';
+    }
+  </script>
+</body>
+</html>
