@@ -6,36 +6,16 @@
 <title>Ma voiture et moi</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
-  .page { display: none; padding: 20px; max-width: 480px; margin: 0 auto; }
-  .page.active { display: block; }
-  h1, h2 { text-align: center; }
-  .centre { text-align: center; }
-  button.grand { display: block; width: 100%; margin: 14px 0; padding: 18px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
-  button.gris { background: #90a4ae; }
-  button.retour { background: none; border: none; color: #1565c0; font-size: 16px; padding: 8px 0; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; text-align: center; }
+  h1 { text-align: center; }
 </style>
 </head>
 <body>
 
-<div id="accueil" class="page active centre">
+<div id="accueil" class="page">
   <h1>🚗 Ma voiture et moi</h1>
   <p>Comprends ta voiture, suis ton entretien, évite les pannes coûteuses.</p>
-  <button class="grand" onclick="aller('menu')">Commencer</button>
 </div>
 
-<div id="menu" class="page">
-  <button class="retour" onclick="aller('accueil')">← Accueil</button>
-  <h2>Menu</h2>
-  
-  
-</div>
-
-<script>
-  function aller(id) {
-    document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
-    document.getElementById(id).classList.add('active');
-    window.scrollTo(0, 0);
-  }
-</script>
 </body>
 </html>
