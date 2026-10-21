@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma voiture - Ma voiture et moi</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
+  h1, h2 { text-align: center; }
+  label { display: block; margin-top: 12px; font-weight: bold; font-size: 15px; }
+  input, select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
+  button.grand { display: block; width: 100%; margin: 18px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
+  a.lien { display: block; text-align: center; padding: 14px; color: #1565c0; font-size: 16px; }
+  #message { text-align: center; font-size: 16px; min-height: 24px; }
+  .carte { background: #fff; border-radius: 12px; padding: 14px; margin: 10px 0; border-left: 8px solid #1565c0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .carte b { font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>🚗 Ma voiture</h1>
+
+  <div id="non-connecte" style="display:none">
+    <p style="text-align:center">Tu dois d'abord te connecter.</p>
+    <a class="lien" href="connexion.html">Aller à la page de connexion</a>
+  </div>
+
+  <div id="contenu" style="display:none">
+    <h2>Enregistrer ma voiture</h2>
+
+    <label>Marque</label>
+    <input id="marque" placeholder="Toyota, Peugeot...">
+    <label>Modèle</label>
+    <input id="modele" placeholder="Corolla, 206...">
+    <label>Année</label>
+    <input id="annee" type="number" placeholder="2012">
+    <label>Carburant</label>
+    <select id="carburant">
+      <option value="essence">Essence</option>
+      <option value="diesel">Diesel</option>
+    </select>
+    <label>Kilométrage actuel</label>
+    <input id="kilometrage" type="number" placeholder="150000">
+    <label>Plaque d'immatriculation (facultatif)</label>
+    <input id="plaque" placeholder="Ta plaque">
+    <label>Date de la dernière vidange</label>
+    <input id="vidange_date" type="date">
+    <label>Kilométrage de la dernière vidange</label>
+    <input id="vidange_km" type="number" placeholder="145000">
+    <label>Comment veux-tu recevoir tes rappels ?</label>
+    <select id="canal">
+      <option value="email">E-mail</option>
+      <option value="whatsapp">WhatsApp</option>
+      <option value="sms">SMS</option>
+    </select>
+    <label>Ton e-mail ou ton numéro pour les rappels</label>
+    <input id="contact" placeholder="E-mail ou numéro avec l'indicatif du pays">
+
+    <button class="grand" onclick="enregistrer()">Enregistrer ma voiture</button>
+    <p id="message"></p>
+
+    <h2>Mes voitures</h2>
+    <div id="liste"></div>
+    <a class="lien" href="connexion.html">Retour à mon compte</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  var client = supabase.createClient(
+    "https://duwvhjhajgzkizfsrscx.supabase.co",
+    "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+  );
+
+  function dire(texte, ok) {
+    var m = document.getElementById("message");
+    m.textContent = texte;
+    m.style.color = ok ? "#2e7d32" : "#c62828";
+  }
+  function texte(id) { return document.getElementById(id).value.trim(); }
+  function ouNull(id) { var v = texte(id); return v === "" ? null : v; }
+  function nombre(id) { var v = texte(id); return v === "" ? null : parseInt(v, 10); }
+
+  async function enregistrer() {
+    if (!texte("marque") || !texte("modele")) {
+      dire("Écris au moins la marque et le modèle.", false);
+      return;
+    }
+    var r = await client.from("voitures").insert({
+      marque: texte("marque"),
+      modele: texte("modele"),
+      annee: nombre("annee"),
+      carburant: texte("carburant"),
+      kilometrage: nombre("kilometrage"),
+      plaque: ouNull("plaque"),
+      derniere_vidange_date: ouNull("vidange_date"),
+      derniere_vidange_km: nombre("vidange_km"),
+      canal_rappel: texte("canal"),
+      contact_rappel: ouNull("contact")
+    });
+    if (r.error) {
+      dire("Erreur : " + r.error.message, false);
+      return;
+    }
+    dire("Voiture enregistrée.", true);
+    charger();
+  }
+
+  async function charger() {
+    var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
+    var liste = document.getElementById("liste");
+    liste.innerHTML = "";
+    if (r.error || !r.data || r.data.length === 0) {
+      liste.textContent = "Aucune voiture enregistrée pour l'instant.";
+      return;
+    }
+    r.data.forEach(function (v) {
+      var d = document.createElement("div");
+      d.className = "carte";
+      var t = document.createElement("b");
+      t.textContent = v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : "");
+      d.appendChild(t);
+      var infos = [];
+      if (v.kilometrage != null) infos.push(v.kilometrage + " km");
+      if (v.carburant) infos.push(v.carburant);
+      if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
+      if (v.canal_rappel) infos.push("Rappels : " + v.canal_rappel);
+      var p = document.createElement("div");
+      p.textContent = infos.join(" · ");
+      d.appendChild(p);
+      liste.appendChild(d);
+    });
+  }
+
+  client.auth.getSession().then(function (r) {
+    if (r.data.session) {
+      document.getElementById("contenu").style.display = "block";
+      charger();
+    } else {
+      document.getElementById("non-connecte").style.display = "block";
+    }
+  });
+</script>
+</body>
+      </html>
