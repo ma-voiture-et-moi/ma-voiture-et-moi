@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion - Ma voiture et moi</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; text-align: center; }
+  input { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin: 8px 0; }
+  button.grand { display: block; width: 100%; margin: 12px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
+  button.gris { background: #607d8b; }
+  #message { font-size: 16px; min-height: 24px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>🚗 Ma voiture et moi</h1>
+
+  <div id="formulaire">
+    <h2>Inscription / Connexion</h2>
+    <input id="email" type="email" placeholder="Ton e-mail">
+    <input id="mdp" type="password" placeholder="Mot de passe (6 caractères minimum)">
+    <button class="grand" onclick="inscrire()">Créer mon compte</button>
+    <button class="grand gris" onclick="connecter()">Me connecter</button>
+  </div>
+
+  <div id="connecte" style="display:none">
+    <h2>Bienvenue !</h2>
+    <p id="qui"></p>
+    <button class="grand gris" onclick="deconnecter()">Me déconnecter</button>
+  </div>
+
+  <p id="message"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  var client = supabase.createClient(
+    "https://duwvhjhajgzkizfsrscx.supabase.co",
+    "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+  );
+
+  function dire(texte, ok) {
+    var m = document.getElementById("message");
+    m.textContent = texte;
+    m.style.color = ok ? "#2e7d32" : "#c62828";
+  }
+
+  function montrer(user) {
+    document.getElementById("formulaire").style.display = "none";
+    document.getElementById("connecte").style.display = "block";
+    document.getElementById("qui").textContent = "Connecté : " + user.email;
+  }
+
+  async function inscrire() {
+    var email = document.getElementById("email").value.trim();
+    var mdp = document.getElementById("mdp").value;
+    if (!email || mdp.length < 6) {
+      dire("Écris ton e-mail et un mot de passe de 6 caractères minimum.", false);
+      return;
+    }
+    var r = await client.auth.signUp({ email: email, password: mdp });
+    if (r.error) {
+      if (r.error.message.indexOf("already") !== -1) {
+        dire("Cet e-mail a déjà un compte. Appuie sur « Me connecter ».", false);
+      } else {
+        dire("Erreur : " + r.error.message, false);
+      }
+      return;
+    }
+    if (r.data.session) {
+      montrer(r.data.user);
+      dire("Compte créé. Bienvenue !", true);
+    } else {
+      dire("Compte créé. Vérifie ton e-mail pour confirmer.", true);
+    }
+  }
+
+  async function connecter() {
+    var email = document.getElementById("email").value.trim();
+    var mdp = document.getElementById("mdp").value;
+    var r = await client.auth.signInWithPassword({ email: email, password: mdp });
+    if (r.error) {
+      dire("E-mail ou mot de passe incorrect.", false);
+      return;
+    }
+    montrer(r.data.user);
+    dire("Connexion réussie.", true);
+  }
+
+  async function deconnecter() {
+    await client.auth.signOut();
+    document.getElementById("formulaire").style.display = "block";
+    document.getElementById("connecte").style.display = "none";
+    dire("Tu es déconnecté.", true);
+  }
+
+  client.auth.getSession().then(function (r) {
+    if (r.data.session) { montrer(r.data.session.user); }
+  });
+</script>
+</body>
+  </html>
