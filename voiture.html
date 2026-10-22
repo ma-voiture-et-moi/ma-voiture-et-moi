@@ -9,6 +9,7 @@
   .page { padding: 20px; max-width: 480px; margin: 0 auto; }
   h1, h2 { text-align: center; }
   label { display: block; margin-top: 12px; font-weight: bold; font-size: 15px; }
+  .aide { font-size: 13px; color: #546e7a; margin-top: 4px; }
   input, select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
   button.grand { display: block; width: 100%; margin: 18px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
   a.lien { display: block; text-align: center; padding: 14px; color: #1565c0; font-size: 16px; }
@@ -48,6 +49,9 @@
     <input id="vidange_date" type="date">
     <label>Kilométrage de la dernière vidange</label>
     <input id="vidange_km" type="number" placeholder="145000">
+    <label>Tous les combien de km changes-tu ton huile ?</label>
+    <input id="intervalle" type="number" placeholder="5000">
+    <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km.</div>
     <label>Comment veux-tu recevoir tes rappels ?</label>
     <select id="canal">
       <option value="email">E-mail</option>
@@ -62,6 +66,7 @@
 
     <h2>Mes voitures</h2>
     <div id="liste"></div>
+    <a class="lien" href="tableau.html">Voir mon tableau de bord</a>
     <a class="lien" href="connexion.html">Retour à mon compte</a>
   </div>
 </div>
@@ -87,15 +92,27 @@
       dire("Écris au moins la marque et le modèle.", false);
       return;
     }
+    var km = nombre("kilometrage");
+    var vkm = nombre("vidange_km");
+    if (km !== null && vkm !== null && vkm > km) {
+      dire("Le kilométrage de la dernière vidange ne peut pas être plus grand que le kilométrage actuel.", false);
+      return;
+    }
+    var inter = nombre("intervalle");
+    if (inter !== null && inter <= 0) {
+      dire("L'intervalle de vidange doit être plus grand que 0.", false);
+      return;
+    }
     var r = await client.from("voitures").insert({
       marque: texte("marque"),
       modele: texte("modele"),
       annee: nombre("annee"),
       carburant: texte("carburant"),
-      kilometrage: nombre("kilometrage"),
+      kilometrage: km,
       plaque: ouNull("plaque"),
       derniere_vidange_date: ouNull("vidange_date"),
-      derniere_vidange_km: nombre("vidange_km"),
+      derniere_vidange_km: vkm,
+      intervalle_km: inter,
       canal_rappel: texte("canal"),
       contact_rappel: ouNull("contact")
     });
@@ -125,6 +142,7 @@
       if (v.kilometrage != null) infos.push(v.kilometrage + " km");
       if (v.carburant) infos.push(v.carburant);
       if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
+      if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " km");
       if (v.canal_rappel) infos.push("Rappels : " + v.canal_rappel);
       var p = document.createElement("div");
       p.textContent = infos.join(" · ");
