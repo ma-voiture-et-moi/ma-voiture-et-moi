@@ -52,6 +52,10 @@
     <label>Tous les combien de km changes-tu ton huile ?</label>
     <input id="intervalle" type="number" placeholder="5000">
     <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km.</div>
+    <label>Date de fin de l'assurance (facultatif)</label>
+    <input id="assurance_fin" type="date">
+    <label>Date de fin de la visite technique (facultatif)</label>
+    <input id="visite_fin" type="date">
     <label>Comment veux-tu recevoir tes rappels ?</label>
     <select id="canal">
       <option value="email">E-mail</option>
@@ -113,6 +117,8 @@
       derniere_vidange_date: ouNull("vidange_date"),
       derniere_vidange_km: vkm,
       intervalle_km: inter,
+      assurance_fin: ouNull("assurance_fin"),
+      visite_technique_fin: ouNull("visite_fin"),
       canal_rappel: texte("canal"),
       contact_rappel: ouNull("contact")
     });
@@ -143,6 +149,8 @@
       if (v.carburant) infos.push(v.carburant);
       if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
       if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " km");
+      if (v.assurance_fin) infos.push("Assurance jusqu'au " + v.assurance_fin);
+      if (v.visite_technique_fin) infos.push("Visite technique jusqu'au " + v.visite_technique_fin);
       if (v.canal_rappel) infos.push("Rappels : " + v.canal_rappel);
       var p = document.createElement("div");
       p.textContent = infos.join(" · ");
@@ -161,4 +169,4 @@
   });
 </script>
 </body>
-      </html>
+</html>
