@@ -19,6 +19,9 @@
   .orange .etat { color: #ef6c00; }
   .rouge .etat { color: #c62828; }
   .info { font-size: 15px; margin: 4px 0; line-height: 1.4; }
+  .d-vert { color: #2e7d32; font-weight: bold; }
+  .d-orange { color: #ef6c00; font-weight: bold; }
+  .d-rouge { color: #c62828; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -82,6 +85,34 @@
     return { etat: etat, message: message, kmRestants: kmRestants, echeance: echeance, inter: inter };
   }
 
+  // Analyse d'une date de fin (assurance ou visite technique)
+  function analyserDate(dateTexte, nom) {
+    if (!dateTexte) return null;
+    var fin = new Date(dateTexte + "T00:00:00");
+    var aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0);
+    var jours = Math.round((fin - aujourdhui) / 86400000);
+    var dateAffichee = fin.toLocaleDateString("fr-FR");
+    if (jours < 0) {
+      var n = Math.abs(jours);
+      return { etat: "rouge", texte: "🔴 " + nom + " : dépassée depuis " + n + (n > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
+    }
+    if (jours <= 30) {
+      return { etat: "orange", texte: "🟠 " + nom + " : il reste " + jours + (jours > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
+    }
+    return { etat: "vert", texte: "🟢 " + nom + " : valable jusqu'au " + dateAffichee };
+  }
+
+  // Choisit la pire couleur parmi plusieurs états
+  function pireEtat(liste) {
+    var ordre = { gris: 0, vert: 1, orange: 2, rouge: 3 };
+    var pire = "gris";
+    liste.forEach(function (e) {
+      if (e && ordre[e] > ordre[pire]) pire = e;
+    });
+    return pire;
+  }
+
   async function charger() {
     var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
     var cartes = document.getElementById("cartes");
@@ -95,8 +126,11 @@
     }
     r.data.forEach(function (v) {
       var a = analyser(v);
+      var ass = analyserDate(v.assurance_fin, "Assurance");
+      var vis = analyserDate(v.visite_technique_fin, "Visite technique");
+      var couleur = pireEtat([a.etat, ass ? ass.etat : null, vis ? vis.etat : null]);
       var c = document.createElement("div");
-      c.className = "carte " + a.etat;
+      c.className = "carte " + couleur;
       ajouter(c, "titre", v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : ""));
       if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " km");
       ajouter(c, "etat", a.message);
@@ -108,6 +142,8 @@
       if (a.echeance) {
         ajouter(c, "info", "Date limite : " + a.echeance.toLocaleDateString("fr-FR"));
       }
+      if (ass) ajouter(c, "info d-" + ass.etat, ass.texte);
+      if (vis) ajouter(c, "info d-" + vis.etat, vis.texte);
       if (v.canal_rappel) {
         ajouter(c, "info", "Rappels par : " + v.canal_rappel + (v.contact_rappel ? " (" + v.contact_rappel + ")" : ""));
       }
@@ -125,4 +161,4 @@
   });
 </script>
 </body>
-  </html>
+</html>
