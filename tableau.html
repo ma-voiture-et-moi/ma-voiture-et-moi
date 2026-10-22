@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon tableau de bord - Ma voiture et moi</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
+  h1 { text-align: center; }
+  a.lien { display: block; text-align: center; padding: 14px; color: #1565c0; font-size: 16px; }
+  .carte { background: #fff; border-radius: 12px; padding: 16px; margin: 14px 0; border-left: 10px solid #999; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .carte.vert { border-left-color: #2e7d32; }
+  .carte.orange { border-left-color: #ef6c00; }
+  .carte.rouge { border-left-color: #c62828; }
+  .titre { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
+  .etat { font-size: 17px; font-weight: bold; margin: 8px 0; }
+  .vert .etat { color: #2e7d32; }
+  .orange .etat { color: #ef6c00; }
+  .rouge .etat { color: #c62828; }
+  .info { font-size: 15px; margin: 4px 0; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>🚗 Mon tableau de bord</h1>
+
+  <div id="non-connecte" style="display:none">
+    <p style="text-align:center">Tu dois d'abord te connecter.</p>
+    <a class="lien" href="connexion.html">Aller à la page de connexion</a>
+  </div>
+
+  <div id="contenu" style="display:none">
+    <div id="cartes"></div>
+    <a class="lien" href="voiture.html">+ Ajouter ou voir mes voitures</a>
+    <a class="lien" href="connexion.html">Mon compte</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  // Si la personne n'a pas choisi son intervalle, on prend ces valeurs
+  var INTERVALLE_KM_PAR_DEFAUT = 5000;
+  var INTERVALLE_MOIS = 6;
+
+  var client = supabase.createClient(
+    "https://duwvhjhajgzkizfsrscx.supabase.co",
+    "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+  );
+
+  function ajouter(parent, classe, texte) {
+    var d = document.createElement("div");
+    d.className = classe;
+    d.textContent = texte;
+    parent.appendChild(d);
+  }
+
+  function analyser(v) {
+    var inter = (v.intervalle_km && v.intervalle_km > 0) ? v.intervalle_km : INTERVALLE_KM_PAR_DEFAUT;
+    var km = v.kilometrage;
+    var vkm = v.derniere_vidange_km;
+    var kmRestants = (km != null && vkm != null) ? (vkm + inter - km) : null;
+    var echeance = null;
+    var jours = null;
+    if (v.derniere_vidange_date) {
+      echeance = new Date(v.derniere_vidange_date + "T00:00:00");
+      echeance.setMonth(echeance.getMonth() + INTERVALLE_MOIS);
+      jours = Math.ceil((echeance - new Date()) / 86400000);
+    }
+    var erreur = (km != null && vkm != null && vkm > km);
+    var etat = "gris";
+    var message = "Ajoute la date et le kilométrage de ta dernière vidange.";
+    if (erreur) {
+      message = "Vérifie tes kilométrages : celui de la vidange est plus grand que le kilométrage actuel.";
+    } else if (kmRestants !== null || jours !== null) {
+      var retard = (kmRestants !== null && kmRestants <= 0) || (jours !== null && jours <= 0);
+      var bientot = (kmRestants !== null && kmRestants <= 500) || (jours !== null && jours <= 30);
+      if (retard) { etat = "rouge"; message = "🔴 Vidange en retard"; }
+      else if (bientot) { etat = "orange"; message = "🟠 Vidange bientôt"; }
+      else { etat = "vert"; message = "🟢 Vidange à jour"; }
+    }
+    return { etat: etat, message: message, kmRestants: kmRestants, echeance: echeance, inter: inter };
+  }
+
+  async function charger() {
+    var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
+    var cartes = document.getElementById("cartes");
+    cartes.innerHTML = "";
+    if (r.error || !r.data || r.data.length === 0) {
+      var vide = document.createElement("p");
+      vide.style.textAlign = "center";
+      vide.textContent = "Aucune voiture enregistrée pour l'instant.";
+      cartes.appendChild(vide);
+      return;
+    }
+    r.data.forEach(function (v) {
+      var a = analyser(v);
+      var c = document.createElement("div");
+      c.className = "carte " + a.etat;
+      ajouter(c, "titre", v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : ""));
+      if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " km");
+      ajouter(c, "etat", a.message);
+      if (a.kmRestants !== null) {
+        var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " km") : ("Dépassé de " + Math.abs(a.kmRestants) + " km");
+        ajouter(c, "info", km + " avant la prochaine vidange.");
+      }
+      ajouter(c, "info", "Vidange tous les " + a.inter + " km ou " + INTERVALLE_MOIS + " mois.");
+      if (a.echeance) {
+        ajouter(c, "info", "Date limite : " + a.echeance.toLocaleDateString("fr-FR"));
+      }
+      if (v.canal_rappel) {
+        ajouter(c, "info", "Rappels par : " + v.canal_rappel + (v.contact_rappel ? " (" + v.contact_rappel + ")" : ""));
+      }
+      cartes.appendChild(c);
+    });
+  }
+
+  client.auth.getSession().then(function (r) {
+    if (r.data.session) {
+      document.getElementById("contenu").style.display = "block";
+      charger();
+    } else {
+      document.getElementById("non-connecte").style.display = "block";
+    }
+  });
+</script>
+</body>
+  </html>
