@@ -12,6 +12,9 @@
   .aide { font-size: 13px; color: #546e7a; margin-top: 4px; }
   input, select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
   button.grand { display: block; width: 100%; margin: 18px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
+  button.grand:disabled { background: #90a4ae; }
+  button.suppr { margin-top: 10px; padding: 10px 14px; font-size: 15px; border: none; border-radius: 8px; background: #c62828; color: #fff; }
+  button.suppr:disabled { background: #90a4ae; }
   a.lien { display: block; text-align: center; padding: 14px; color: #1565c0; font-size: 16px; }
   #message { text-align: center; font-size: 16px; min-height: 24px; }
   .carte { background: #fff; border-radius: 12px; padding: 14px; margin: 10px 0; border-left: 8px solid #1565c0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
@@ -65,7 +68,7 @@
     <label>Ton e-mail ou ton numéro pour les rappels</label>
     <input id="contact" placeholder="E-mail ou numéro avec l'indicatif du pays">
 
-    <button class="grand" onclick="enregistrer()">Enregistrer ma voiture</button>
+    <button class="grand" id="btn-enregistrer" onclick="enregistrer()">Enregistrer ma voiture</button>
     <p id="message"></p>
 
     <h2>Mes voitures</h2>
@@ -82,6 +85,8 @@
     "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
   );
 
+  var enCours = false;
+
   function dire(texte, ok) {
     var m = document.getElementById("message");
     m.textContent = texte;
@@ -91,7 +96,14 @@
   function ouNull(id) { var v = texte(id); return v === "" ? null : v; }
   function nombre(id) { var v = texte(id); return v === "" ? null : parseInt(v, 10); }
 
+  function viderFormulaire() {
+    ["marque", "modele", "annee", "kilometrage", "plaque", "vidange_date", "vidange_km", "intervalle", "assurance_fin", "visite_fin", "contact"].forEach(function (id) {
+      document.getElementById(id).value = "";
+    });
+  }
+
   async function enregistrer() {
+    if (enCours) return;
     if (!texte("marque") || !texte("modele")) {
       dire("Écris au moins la marque et le modèle.", false);
       return;
@@ -107,26 +119,57 @@
       dire("L'intervalle de vidange doit être plus grand que 0.", false);
       return;
     }
-    var r = await client.from("voitures").insert({
-      marque: texte("marque"),
-      modele: texte("modele"),
-      annee: nombre("annee"),
-      carburant: texte("carburant"),
-      kilometrage: km,
-      plaque: ouNull("plaque"),
-      derniere_vidange_date: ouNull("vidange_date"),
-      derniere_vidange_km: vkm,
-      intervalle_km: inter,
-      assurance_fin: ouNull("assurance_fin"),
-      visite_technique_fin: ouNull("visite_fin"),
-      canal_rappel: texte("canal"),
-      contact_rappel: ouNull("contact")
-    });
-    if (r.error) {
-      dire("Erreur : " + r.error.message, false);
-      return;
+    enCours = true;
+    var bouton = document.getElementById("btn-enregistrer");
+    bouton.disabled = true;
+    bouton.textContent = "Enregistrement...";
+    try {
+      var r = await client.from("voitures").insert({
+        marque: texte("marque"),
+        modele: texte("modele"),
+        annee: nombre("annee"),
+        carburant: texte("carburant"),
+        kilometrage: km,
+        plaque: ouNull("plaque"),
+        derniere_vidange_date: ouNull("vidange_date"),
+        derniere_vidange_km: vkm,
+        intervalle_km: inter,
+        assurance_fin: ouNull("assurance_fin"),
+        visite_technique_fin: ouNull("visite_fin"),
+        canal_rappel: texte("canal"),
+        contact_rappel: ouNull("contact")
+      });
+      if (r.error) {
+        dire("Erreur : " + r.error.message, false);
+      } else {
+        dire("Voiture enregistrée.", true);
+        viderFormulaire();
+        charger();
+      }
+    } catch (e) {
+      dire("Erreur : impossible d'enregistrer. Vérifie ta connexion.", false);
     }
-    dire("Voiture enregistrée.", true);
+    enCours = false;
+    bouton.disabled = false;
+    bouton.textContent = "Enregistrer ma voiture";
+  }
+
+  async function supprimer(id, bouton) {
+    if (!confirm("Tu es sûr de vouloir supprimer cette voiture ?")) return;
+    bouton.disabled = true;
+    bouton.textContent = "Suppression...";
+    try {
+      var r = await client.from("voitures").delete().eq("id", id).select();
+      if (r.error) {
+        dire("Erreur : " + r.error.message, false);
+      } else if (!r.data || r.data.length === 0) {
+        dire("La voiture n'a pas été supprimée (droit manquant dans Supabase).", false);
+      } else {
+        dire("Voiture supprimée.", true);
+      }
+    } catch (e) {
+      dire("Erreur : impossible de supprimer. Vérifie ta connexion.", false);
+    }
     charger();
   }
 
@@ -155,6 +198,11 @@
       var p = document.createElement("div");
       p.textContent = infos.join(" · ");
       d.appendChild(p);
+      var b = document.createElement("button");
+      b.className = "suppr";
+      b.textContent = "Supprimer";
+      b.onclick = function () { supprimer(v.id, b); };
+      d.appendChild(b);
       liste.appendChild(d);
     });
   }
