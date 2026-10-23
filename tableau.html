@@ -15,9 +15,10 @@
   .carte.rouge { border-left-color: #c62828; }
   .titre { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
   .etat { font-size: 17px; font-weight: bold; margin: 8px 0; }
-  .vert .etat { color: #2e7d32; }
-  .orange .etat { color: #ef6c00; }
-  .rouge .etat { color: #c62828; }
+  .e-vert { color: #2e7d32; }
+  .e-orange { color: #ef6c00; }
+  .e-rouge { color: #c62828; }
+  .e-gris { color: #546e7a; }
   .info { font-size: 15px; margin: 4px 0; line-height: 1.4; }
   .d-vert { color: #2e7d32; font-weight: bold; }
   .d-orange { color: #ef6c00; font-weight: bold; }
@@ -62,7 +63,8 @@
     var inter = (v.intervalle_km && v.intervalle_km > 0) ? v.intervalle_km : INTERVALLE_KM_PAR_DEFAUT;
     var km = v.kilometrage;
     var vkm = v.derniere_vidange_km;
-    var kmRestants = (km != null && vkm != null) ? (vkm + inter - km) : null;
+    var erreur = (km != null && vkm != null && vkm > km);
+    var kmRestants = (km != null && vkm != null && !erreur) ? (vkm + inter - km) : null;
     var echeance = null;
     var jours = null;
     if (v.derniere_vidange_date) {
@@ -70,7 +72,6 @@
       echeance.setMonth(echeance.getMonth() + INTERVALLE_MOIS);
       jours = Math.ceil((echeance - new Date()) / 86400000);
     }
-    var erreur = (km != null && vkm != null && vkm > km);
     var etat = "gris";
     var message = "Ajoute la date et le kilométrage de ta dernière vidange.";
     if (erreur) {
@@ -96,6 +97,9 @@
     if (jours < 0) {
       var n = Math.abs(jours);
       return { etat: "rouge", texte: "🔴 " + nom + " : dépassée depuis " + n + (n > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
+    }
+    if (jours === 0) {
+      return { etat: "orange", texte: "🟠 " + nom + " : se termine aujourd'hui (" + dateAffichee + ")" };
     }
     if (jours <= 30) {
       return { etat: "orange", texte: "🟠 " + nom + " : il reste " + jours + (jours > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
@@ -133,7 +137,7 @@
       c.className = "carte " + couleur;
       ajouter(c, "titre", v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : ""));
       if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " km");
-      ajouter(c, "etat", a.message);
+      ajouter(c, "etat e-" + a.etat, a.message);
       if (a.kmRestants !== null) {
         var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " km") : ("Dépassé de " + Math.abs(a.kmRestants) + " km");
         ajouter(c, "info", km + " avant la prochaine vidange.");
