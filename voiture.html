@@ -44,13 +44,19 @@
       <option value="essence">Essence</option>
       <option value="diesel">Diesel</option>
     </select>
-    <label>Kilométrage actuel</label>
+    <label>Ton compteur affiche en :</label>
+    <select id="unite" onchange="changerUnite()">
+      <option value="km">Kilomètres (km)</option>
+      <option value="miles">Miles</option>
+    </select>
+    <div class="aide">Les voitures venues d'Angleterre ou des États-Unis affichent souvent des miles.</div>
+    <label>Kilométrage actuel (<span class="u">km</span>)</label>
     <input id="kilometrage" type="number" placeholder="150000">
     <label>Plaque d'immatriculation (facultatif)</label>
     <input id="plaque" placeholder="Ta plaque">
     <label>Date de la dernière vidange</label>
     <input id="vidange_date" type="date">
-    <label>Kilométrage de la dernière vidange</label>
+    <label>Kilométrage de la dernière vidange (<span class="u">km</span>)</label>
     <input id="vidange_km" type="number" placeholder="145000">
     <label>Quelle huile utilises-tu ?</label>
     <select id="huile" onchange="proposer()">
@@ -61,10 +67,10 @@
       <option value="inconnue">Je ne sais pas</option>
     </select>
     <div class="aide">C'est écrit sur le bidon d'huile.</div>
-    <label>Tous les combien de km changes-tu ton huile ?</label>
+    <label>Tous les combien de <span class="u">km</span> changes-tu ton huile ?</label>
     <input id="intervalle" type="number" placeholder="5000" oninput="noterIntervalle()">
     <div class="aide" id="note-huile"></div>
-    <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km.</div>
+    <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km (environ 3100 miles).</div>
     <label>Date de fin de l'assurance (facultatif)</label>
     <input id="assurance_fin" type="date">
     <label>Date de fin de la visite technique (facultatif)</label>
@@ -97,8 +103,9 @@
 
   var enCours = false;
   var intervalleModifie = false;
+  var KM_PAR_MILE = 1.609344;
 
-  // Estimations générales (pas des données du constructeur)
+  // Estimations générales en km (pas des données du constructeur)
   var INTERVALLES = {
     minerale:    { essence: 5000,  diesel: 4000 },
     semi:        { essence: 7500,  diesel: 6000 },
@@ -121,6 +128,17 @@
   function ouNull(id) { var v = texte(id); return v === "" ? null : v; }
   function nombre(id) { var v = texte(id); return v === "" ? null : parseInt(v, 10); }
 
+  // Unité du compteur choisie : "km" ou "miles"
+  function unite() { return texte("unite") === "miles" ? "miles" : "km"; }
+
+  // Convertit un nombre de km dans l'unité du compteur
+  function enUnite(km) {
+    if (unite() === "miles") {
+      return Math.round(km / KM_PAR_MILE / 100) * 100;
+    }
+    return km;
+  }
+
   // Retient si la personne a écrit son propre chiffre
   function noterIntervalle() {
     intervalleModifie = (texte("intervalle") !== "");
@@ -133,10 +151,21 @@
     if (!t) { note.textContent = ""; return; }
     var km = t[texte("carburant")];
     if (!km) { note.textContent = ""; return; }
+    var valeur = enUnite(km);
     if (!intervalleModifie) {
-      document.getElementById("intervalle").value = km;
+      document.getElementById("intervalle").value = valeur;
     }
-    note.textContent = "Proposition : " + km + " km. Estimation générale, pas une donnée du constructeur. Tu peux changer le chiffre.";
+    note.textContent = "Proposition : " + valeur + " " + unite() + ". Estimation générale, pas une donnée du constructeur. Tu peux changer le chiffre.";
+  }
+
+  // Change les mots « km » / « miles » sur la page
+  function changerUnite() {
+    var u = unite();
+    var spans = document.getElementsByClassName("u");
+    for (var i = 0; i < spans.length; i++) {
+      spans[i].textContent = u;
+    }
+    proposer();
   }
 
   function viderFormulaire() {
@@ -175,6 +204,7 @@
         modele: texte("modele"),
         annee: nombre("annee"),
         carburant: texte("carburant"),
+        unite_compteur: unite(),
         kilometrage: km,
         plaque: ouNull("plaque"),
         derniere_vidange_date: ouNull("vidange_date"),
@@ -229,17 +259,18 @@
       return;
     }
     r.data.forEach(function (v) {
+      var u = v.unite_compteur === "miles" ? "miles" : "km";
       var d = document.createElement("div");
       d.className = "carte";
       var t = document.createElement("b");
       t.textContent = v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : "");
       d.appendChild(t);
       var infos = [];
-      if (v.kilometrage != null) infos.push(v.kilometrage + " km");
+      if (v.kilometrage != null) infos.push(v.kilometrage + " " + u);
       if (v.carburant) infos.push(v.carburant);
       if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
       if (v.type_huile && LIBELLES_HUILE[v.type_huile]) infos.push("Huile : " + LIBELLES_HUILE[v.type_huile]);
-      if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " km");
+      if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " " + u);
       if (v.assurance_fin) infos.push("Assurance jusqu'au " + v.assurance_fin);
       if (v.visite_technique_fin) infos.push("Visite technique jusqu'au " + v.visite_technique_fin);
       if (v.canal_rappel) infos.push("Rappels : " + v.canal_rappel);
@@ -265,4 +296,4 @@
   });
 </script>
 </body>
-      </html>
+</html>
