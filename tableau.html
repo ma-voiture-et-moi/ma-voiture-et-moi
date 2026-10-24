@@ -45,6 +45,10 @@
 <script>
   // Si la personne n'a pas choisi son intervalle, on prend ces valeurs
   var INTERVALLE_KM_PAR_DEFAUT = 5000;
+  var INTERVALLE_MILES_PAR_DEFAUT = 3100;
+  // Distance restante à partir de laquelle on prévient (orange)
+  var SEUIL_KM = 500;
+  var SEUIL_MILES = 300;
   var INTERVALLE_MOIS = 6;
 
   var client = supabase.createClient(
@@ -60,7 +64,11 @@
   }
 
   function analyser(v) {
-    var inter = (v.intervalle_km && v.intervalle_km > 0) ? v.intervalle_km : INTERVALLE_KM_PAR_DEFAUT;
+    var miles = (v.unite_compteur === "miles");
+    var unite = miles ? "miles" : "km";
+    var defaut = miles ? INTERVALLE_MILES_PAR_DEFAUT : INTERVALLE_KM_PAR_DEFAUT;
+    var seuil = miles ? SEUIL_MILES : SEUIL_KM;
+    var inter = (v.intervalle_km && v.intervalle_km > 0) ? v.intervalle_km : defaut;
     var km = v.kilometrage;
     var vkm = v.derniere_vidange_km;
     var erreur = (km != null && vkm != null && vkm > km);
@@ -78,12 +86,12 @@
       message = "Vérifie tes kilométrages : celui de la vidange est plus grand que le kilométrage actuel.";
     } else if (kmRestants !== null || jours !== null) {
       var retard = (kmRestants !== null && kmRestants <= 0) || (jours !== null && jours <= 0);
-      var bientot = (kmRestants !== null && kmRestants <= 500) || (jours !== null && jours <= 30);
+      var bientot = (kmRestants !== null && kmRestants <= seuil) || (jours !== null && jours <= 30);
       if (retard) { etat = "rouge"; message = "🔴 Vidange en retard"; }
       else if (bientot) { etat = "orange"; message = "🟠 Vidange bientôt"; }
       else { etat = "vert"; message = "🟢 Vidange à jour"; }
     }
-    return { etat: etat, message: message, kmRestants: kmRestants, echeance: echeance, inter: inter };
+    return { etat: etat, message: message, kmRestants: kmRestants, echeance: echeance, inter: inter, unite: unite };
   }
 
   // Analyse d'une date de fin (assurance ou visite technique)
@@ -136,13 +144,13 @@
       var c = document.createElement("div");
       c.className = "carte " + couleur;
       ajouter(c, "titre", v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : ""));
-      if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " km");
+      if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " " + a.unite);
       ajouter(c, "etat e-" + a.etat, a.message);
       if (a.kmRestants !== null) {
-        var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " km") : ("Dépassé de " + Math.abs(a.kmRestants) + " km");
+        var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " " + a.unite) : ("Dépassé de " + Math.abs(a.kmRestants) + " " + a.unite);
         ajouter(c, "info", km + " avant la prochaine vidange.");
       }
-      ajouter(c, "info", "Vidange tous les " + a.inter + " km ou " + INTERVALLE_MOIS + " mois.");
+      ajouter(c, "info", "Vidange tous les " + a.inter + " " + a.unite + " ou " + INTERVALLE_MOIS + " mois.");
       if (a.echeance) {
         ajouter(c, "info", "Date limite : " + a.echeance.toLocaleDateString("fr-FR"));
       }
