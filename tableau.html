@@ -23,6 +23,12 @@
   .d-vert { color: #2e7d32; font-weight: bold; }
   .d-orange { color: #ef6c00; font-weight: bold; }
   .d-rouge { color: #c62828; font-weight: bold; }
+  .maj { margin-top: 14px; }
+  .maj input { width: 100%; box-sizing: border-box; padding: 12px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; background: #fff; }
+  .maj button { display: block; width: 100%; margin-top: 8px; padding: 12px; font-size: 16px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
+  .maj button:disabled { background: #90a4ae; }
+  .retour-ok { margin-top: 8px; color: #2e7d32; font-weight: bold; font-size: 15px; }
+  .retour-err { margin-top: 8px; color: #c62828; font-weight: bold; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -56,11 +62,25 @@
     "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
   );
 
+  // Message à afficher une fois sous une voiture après une mise à jour
+  var retour = null;
+
   function ajouter(parent, classe, texte) {
     var d = document.createElement("div");
     d.className = classe;
     d.textContent = texte;
     parent.appendChild(d);
+    return d;
+  }
+
+  // Date d'aujourd'hui au format AAAA-MM-JJ (heure locale)
+  function aujourdhuiTexte() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1);
+    if (m.length < 2) m = "0" + m;
+    var j = String(d.getDate());
+    if (j.length < 2) j = "0" + j;
+    return d.getFullYear() + "-" + m + "-" + j;
   }
 
   function analyser(v) {
@@ -125,6 +145,34 @@
     return pire;
   }
 
+  // Enregistre le nouveau kilométrage et la date du jour
+  async function mettreAJour(v, champ, bouton) {
+    var saisi = champ.value.trim();
+    var n = parseInt(saisi, 10);
+    if (saisi === "" || isNaN(n) || n < 0) {
+      alert("Écris le chiffre que ton compteur affiche.");
+      return;
+    }
+    if (v.kilometrage != null && n < v.kilometrage) {
+      if (!confirm("Ce chiffre est plus petit que l'ancien (" + v.kilometrage + "). C'est bien le chiffre de ton compteur ?")) return;
+    }
+    bouton.disabled = true;
+    bouton.textContent = "Mise à jour...";
+    try {
+      var r = await client.from("voitures").update({ kilometrage: n, kilometrage_maj: aujourdhuiTexte() }).eq("id", v.id).select();
+      if (r.error) {
+        retour = { id: v.id, ok: false, texte: "Erreur : " + r.error.message };
+      } else if (!r.data || r.data.length === 0) {
+        retour = { id: v.id, ok: false, texte: "Le kilométrage n'a pas été mis à jour (droit manquant dans Supabase)." };
+      } else {
+        retour = { id: v.id, ok: true, texte: "Kilométrage mis à jour." };
+      }
+    } catch (e) {
+      retour = { id: v.id, ok: false, texte: "Erreur : impossible de mettre à jour. Vérifie ta connexion." };
+    }
+    charger();
+  }
+
   async function charger() {
     var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
     var cartes = document.getElementById("cartes");
@@ -144,7 +192,13 @@
       var c = document.createElement("div");
       c.className = "carte " + couleur;
       ajouter(c, "titre", v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : ""));
-      if (v.kilometrage != null) ajouter(c, "info", "Kilométrage actuel : " + v.kilometrage + " " + a.unite);
+      if (v.kilometrage != null) {
+        var ligne = "Kilométrage actuel : " + v.kilometrage + " " + a.unite;
+        if (v.kilometrage_maj) {
+          ligne += " (mis à jour le " + new Date(v.kilometrage_maj + "T00:00:00").toLocaleDateString("fr-FR") + ")";
+        }
+        ajouter(c, "info", ligne);
+      }
       ajouter(c, "etat e-" + a.etat, a.message);
       if (a.kmRestants !== null) {
         var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " " + a.unite) : ("Dépassé de " + Math.abs(a.kmRestants) + " " + a.unite);
@@ -159,8 +213,23 @@
       if (v.canal_rappel) {
         ajouter(c, "info", "Rappels par : " + v.canal_rappel + (v.contact_rappel ? " (" + v.contact_rappel + ")" : ""));
       }
+      var zone = document.createElement("div");
+      zone.className = "maj";
+      var champ = document.createElement("input");
+      champ.type = "number";
+      champ.placeholder = "Ton compteur affiche (" + a.unite + ")";
+      zone.appendChild(champ);
+      var bouton = document.createElement("button");
+      bouton.textContent = "Mettre à jour mon kilométrage";
+      bouton.onclick = function () { mettreAJour(v, champ, bouton); };
+      zone.appendChild(bouton);
+      if (retour && retour.id === v.id) {
+        ajouter(zone, retour.ok ? "retour-ok" : "retour-err", retour.texte);
+      }
+      c.appendChild(zone);
       cartes.appendChild(c);
     });
+    retour = null;
   }
 
   client.auth.getSession().then(function (r) {
