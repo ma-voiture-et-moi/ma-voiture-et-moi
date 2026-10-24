@@ -40,7 +40,7 @@
     <label>Année</label>
     <input id="annee" type="number" placeholder="2012">
     <label>Carburant</label>
-    <select id="carburant">
+    <select id="carburant" onchange="proposer()">
       <option value="essence">Essence</option>
       <option value="diesel">Diesel</option>
     </select>
@@ -52,8 +52,18 @@
     <input id="vidange_date" type="date">
     <label>Kilométrage de la dernière vidange</label>
     <input id="vidange_km" type="number" placeholder="145000">
+    <label>Quelle huile utilises-tu ?</label>
+    <select id="huile" onchange="proposer()">
+      <option value="">Choisis ton huile</option>
+      <option value="minerale">Minérale</option>
+      <option value="semi">Semi-synthétique</option>
+      <option value="synthetique">Synthétique</option>
+      <option value="inconnue">Je ne sais pas</option>
+    </select>
+    <div class="aide">C'est écrit sur le bidon d'huile.</div>
     <label>Tous les combien de km changes-tu ton huile ?</label>
-    <input id="intervalle" type="number" placeholder="5000">
+    <input id="intervalle" type="number" placeholder="5000" oninput="noterIntervalle()">
+    <div class="aide" id="note-huile"></div>
     <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km.</div>
     <label>Date de fin de l'assurance (facultatif)</label>
     <input id="assurance_fin" type="date">
@@ -86,6 +96,21 @@
   );
 
   var enCours = false;
+  var intervalleModifie = false;
+
+  // Estimations générales (pas des données du constructeur)
+  var INTERVALLES = {
+    minerale:    { essence: 5000,  diesel: 4000 },
+    semi:        { essence: 7500,  diesel: 6000 },
+    synthetique: { essence: 10000, diesel: 8000 },
+    inconnue:    { essence: 5000,  diesel: 5000 }
+  };
+  var LIBELLES_HUILE = {
+    minerale: "minérale",
+    semi: "semi-synthétique",
+    synthetique: "synthétique",
+    inconnue: "non précisée"
+  };
 
   function dire(texte, ok) {
     var m = document.getElementById("message");
@@ -96,10 +121,31 @@
   function ouNull(id) { var v = texte(id); return v === "" ? null : v; }
   function nombre(id) { var v = texte(id); return v === "" ? null : parseInt(v, 10); }
 
+  // Retient si la personne a écrit son propre chiffre
+  function noterIntervalle() {
+    intervalleModifie = (texte("intervalle") !== "");
+  }
+
+  // Propose un intervalle selon l'huile et le carburant
+  function proposer() {
+    var note = document.getElementById("note-huile");
+    var t = INTERVALLES[texte("huile")];
+    if (!t) { note.textContent = ""; return; }
+    var km = t[texte("carburant")];
+    if (!km) { note.textContent = ""; return; }
+    if (!intervalleModifie) {
+      document.getElementById("intervalle").value = km;
+    }
+    note.textContent = "Proposition : " + km + " km. Estimation générale, pas une donnée du constructeur. Tu peux changer le chiffre.";
+  }
+
   function viderFormulaire() {
     ["marque", "modele", "annee", "kilometrage", "plaque", "vidange_date", "vidange_km", "intervalle", "assurance_fin", "visite_fin", "contact"].forEach(function (id) {
       document.getElementById(id).value = "";
     });
+    document.getElementById("huile").value = "";
+    document.getElementById("note-huile").textContent = "";
+    intervalleModifie = false;
   }
 
   async function enregistrer() {
@@ -134,6 +180,7 @@
         derniere_vidange_date: ouNull("vidange_date"),
         derniere_vidange_km: vkm,
         intervalle_km: inter,
+        type_huile: ouNull("huile"),
         assurance_fin: ouNull("assurance_fin"),
         visite_technique_fin: ouNull("visite_fin"),
         canal_rappel: texte("canal"),
@@ -191,6 +238,7 @@
       if (v.kilometrage != null) infos.push(v.kilometrage + " km");
       if (v.carburant) infos.push(v.carburant);
       if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
+      if (v.type_huile && LIBELLES_HUILE[v.type_huile]) infos.push("Huile : " + LIBELLES_HUILE[v.type_huile]);
       if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " km");
       if (v.assurance_fin) infos.push("Assurance jusqu'au " + v.assurance_fin);
       if (v.visite_technique_fin) infos.push("Visite technique jusqu'au " + v.visite_technique_fin);
@@ -217,4 +265,4 @@
   });
 </script>
 </body>
-</html>
+      </html>
