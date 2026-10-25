@@ -29,6 +29,15 @@
   .maj button:disabled { background: #90a4ae; }
   .retour-ok { margin-top: 8px; color: #2e7d32; font-weight: bold; font-size: 15px; }
   .retour-err { margin-top: 8px; color: #c62828; font-weight: bold; font-size: 15px; }
+  .vid { margin-top: 14px; }
+  .vid button.ouvrir { display: block; width: 100%; padding: 12px; font-size: 16px; border: none; border-radius: 10px; background: #2e7d32; color: #fff; }
+  .vid .panneau { margin-top: 10px; padding: 12px; background: #f4f6f8; border-radius: 10px; }
+  .vid label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
+  .vid input, .vid select { width: 100%; box-sizing: border-box; padding: 12px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 4px; background: #fff; }
+  .vid .note { font-size: 13px; color: #546e7a; margin-top: 4px; }
+  .vid button.valider { display: block; width: 100%; margin-top: 12px; padding: 12px; font-size: 16px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
+  .vid button.valider:disabled { background: #90a4ae; }
+  .vid button.annuler { display: block; width: 100%; margin-top: 8px; padding: 10px; font-size: 15px; border: none; border-radius: 10px; background: #cfd8dc; color: #1b2a3a; }
 </style>
 </head>
 <body>
@@ -56,14 +65,24 @@
   var SEUIL_KM = 500;
   var SEUIL_MILES = 300;
   var INTERVALLE_MOIS = 6;
+  var KM_PAR_MILE = 1.609344;
+
+  // Estimations générales en km (pas des données du constructeur)
+  var INTERVALLES = {
+    minerale:    { essence: 5000,  diesel: 4000 },
+    semi:        { essence: 7500,  diesel: 6000 },
+    synthetique: { essence: 10000, diesel: 8000 },
+    inconnue:    { essence: 5000,  diesel: 5000 }
+  };
 
   var client = supabase.createClient(
     "https://duwvhjhajgzkizfsrscx.supabase.co",
     "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
   );
 
-  // Message à afficher une fois sous une voiture après une mise à jour
+  // Messages à afficher une fois sous une voiture après une action
   var retour = null;
+  var retourV = null;
 
   function ajouter(parent, classe, texte) {
     var d = document.createElement("div");
@@ -81,6 +100,15 @@
     var j = String(d.getDate());
     if (j.length < 2) j = "0" + j;
     return d.getFullYear() + "-" + m + "-" + j;
+  }
+
+  // Intervalle proposé selon l'huile et le carburant (dans l'unité du compteur)
+  function proposition(huile, carburant, unite) {
+    var t = INTERVALLES[huile];
+    if (!t) return null;
+    var km = t[carburant === "diesel" ? "diesel" : "essence"];
+    if (unite === "miles") return Math.round(km / KM_PAR_MILE / 100) * 100;
+    return km;
   }
 
   function analyser(v) {
@@ -173,6 +201,156 @@
     charger();
   }
 
+  // Enregistre une nouvelle vidange (comme le papillon de vidange)
+  async function enregistrerVidange(v, dateChamp, kmChamp, huileChamp, interChamp, bouton) {
+    var dateSaisie = dateChamp.value;
+    var kmTexte = kmChamp.value.trim();
+    var n = parseInt(kmTexte, 10);
+    if (!dateSaisie) {
+      alert("Choisis la date de la vidange.");
+      return;
+    }
+    if (dateSaisie > aujourdhuiTexte()) {
+      alert("La date de la vidange ne peut pas être dans le futur.");
+      return;
+    }
+    if (kmTexte === "" || isNaN(n) || n < 0) {
+      alert("Écris le chiffre que ton compteur affichait à la vidange.");
+      return;
+    }
+    var interTexte = interChamp.value.trim();
+    var inter = (interTexte === "") ? null : parseInt(interTexte, 10);
+    if (inter !== null && (isNaN(inter) || inter <= 0)) {
+      alert("L'intervalle de vidange doit être plus grand que 0.");
+      return;
+    }
+    if (v.derniere_vidange_km != null && n < v.derniere_vidange_km) {
+      if (!confirm("Ce chiffre est plus petit que celui de la vidange d'avant (" + v.derniere_vidange_km + "). C'est bien le chiffre de ton compteur ?")) return;
+    }
+    if (v.derniere_vidange_date && dateSaisie < v.derniere_vidange_date) {
+      if (!confirm("Cette date est plus ancienne que celle de la vidange d'avant. C'est bien la bonne date ?")) return;
+    }
+    var champs = {
+      derniere_vidange_date: dateSaisie,
+      derniere_vidange_km: n,
+      intervalle_km: inter,
+      type_huile: (huileChamp.value !== "") ? huileChamp.value : (v.type_huile || null)
+    };
+    if (v.kilometrage == null || n > v.kilometrage) {
+      champs.kilometrage = n;
+      champs.kilometrage_maj = dateSaisie;
+    }
+    bouton.disabled = true;
+    bouton.textContent = "Enregistrement...";
+    try {
+      var r = await client.from("voitures").update(champs).eq("id", v.id).select();
+      if (r.error) {
+        retourV = { id: v.id, ok: false, texte: "Erreur : " + r.error.message };
+      } else if (!r.data || r.data.length === 0) {
+        retourV = { id: v.id, ok: false, texte: "La vidange n'a pas été enregistrée (droit manquant dans Supabase)." };
+      } else {
+        retourV = { id: v.id, ok: true, texte: "Vidange enregistrée. La prochaine vidange est recalculée." };
+      }
+    } catch (e) {
+      retourV = { id: v.id, ok: false, texte: "Erreur : impossible d'enregistrer. Vérifie ta connexion." };
+    }
+    charger();
+  }
+
+  // Construit le bouton « J'ai fait ma vidange » et sa petite fiche
+  function construireVidange(v, a, parent) {
+    var zone = document.createElement("div");
+    zone.className = "vid";
+
+    var ouvrir = document.createElement("button");
+    ouvrir.className = "ouvrir";
+    ouvrir.textContent = "J'ai fait ma vidange";
+    zone.appendChild(ouvrir);
+
+    if (retourV && retourV.id === v.id) {
+      ajouter(zone, retourV.ok ? "retour-ok" : "retour-err", retourV.texte);
+    }
+
+    var panneau = document.createElement("div");
+    panneau.className = "panneau";
+    panneau.style.display = "none";
+
+    function etiquette(texte) {
+      var l = document.createElement("label");
+      l.textContent = texte;
+      panneau.appendChild(l);
+    }
+
+    etiquette("Date de la vidange");
+    var dateChamp = document.createElement("input");
+    dateChamp.type = "date";
+    dateChamp.value = aujourdhuiTexte();
+    dateChamp.max = aujourdhuiTexte();
+    panneau.appendChild(dateChamp);
+
+    etiquette("Kilométrage à la vidange (" + a.unite + ")");
+    var kmChamp = document.createElement("input");
+    kmChamp.type = "number";
+    kmChamp.placeholder = "Ton compteur affichait (" + a.unite + ")";
+    panneau.appendChild(kmChamp);
+
+    etiquette("Quelle huile as-tu mise ?");
+    var huileChamp = document.createElement("select");
+    var choix = [
+      ["", "Choisis ton huile"],
+      ["minerale", "Minérale"],
+      ["semi", "Semi-synthétique"],
+      ["synthetique", "Synthétique"],
+      ["inconnue", "Je ne sais pas"]
+    ];
+    choix.forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c[0];
+      o.textContent = c[1];
+      huileChamp.appendChild(o);
+    });
+    if (v.type_huile && INTERVALLES[v.type_huile]) huileChamp.value = v.type_huile;
+    panneau.appendChild(huileChamp);
+
+    etiquette("Prochaine vidange dans (" + a.unite + ")");
+    var interChamp = document.createElement("input");
+    interChamp.type = "number";
+    interChamp.value = a.inter;
+    panneau.appendChild(interChamp);
+
+    var note = document.createElement("div");
+    note.className = "note";
+    panneau.appendChild(note);
+
+    var modifie = false;
+    interChamp.oninput = function () { modifie = true; };
+    huileChamp.onchange = function () {
+      var p = proposition(huileChamp.value, v.carburant, a.unite);
+      if (p === null) { note.textContent = ""; return; }
+      if (!modifie) interChamp.value = p;
+      note.textContent = "Proposition : " + p + " " + a.unite + ". Estimation générale, pas une donnée du constructeur. Tu peux changer le chiffre.";
+    };
+
+    var valider = document.createElement("button");
+    valider.className = "valider";
+    valider.textContent = "Enregistrer la vidange";
+    valider.onclick = function () { enregistrerVidange(v, dateChamp, kmChamp, huileChamp, interChamp, valider); };
+    panneau.appendChild(valider);
+
+    var annuler = document.createElement("button");
+    annuler.className = "annuler";
+    annuler.textContent = "Annuler";
+    annuler.onclick = function () { panneau.style.display = "none"; };
+    panneau.appendChild(annuler);
+
+    ouvrir.onclick = function () {
+      panneau.style.display = (panneau.style.display === "none") ? "block" : "none";
+    };
+
+    zone.appendChild(panneau);
+    parent.appendChild(zone);
+  }
+
   async function charger() {
     var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
     var cartes = document.getElementById("cartes");
@@ -227,9 +405,11 @@
         ajouter(zone, retour.ok ? "retour-ok" : "retour-err", retour.texte);
       }
       c.appendChild(zone);
+      construireVidange(v, a, c);
       cartes.appendChild(c);
     });
     retour = null;
+    retourV = null;
   }
 
   client.auth.getSession().then(function (r) {
