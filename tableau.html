@@ -23,6 +23,9 @@
   .d-vert { color: #2e7d32; font-weight: bold; }
   .d-orange { color: #ef6c00; font-weight: bold; }
   .d-rouge { color: #c62828; font-weight: bold; }
+  .wazone { margin-top: 14px; }
+  a.wa { display: block; text-align: center; text-decoration: none; padding: 12px; font-size: 16px; border-radius: 10px; background: #128c7e; color: #fff; }
+  .wa-info { font-size: 13px; color: #546e7a; margin-top: 6px; }
   .maj { margin-top: 14px; }
   .maj input { width: 100%; box-sizing: border-box; padding: 12px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; background: #fff; }
   .maj button { display: block; width: 100%; margin-top: 8px; padding: 12px; font-size: 16px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
@@ -66,6 +69,8 @@
   var SEUIL_MILES = 300;
   var INTERVALLE_MOIS = 6;
   var KM_PAR_MILE = 1.609344;
+  // Indicatif ajouté aux numéros de 8 chiffres (Burkina Faso)
+  var INDICATIF_PAR_DEFAUT = "226";
 
   // Estimations générales en km (pas des données du constructeur)
   var INTERVALLES = {
@@ -152,15 +157,15 @@
     var dateAffichee = fin.toLocaleDateString("fr-FR");
     if (jours < 0) {
       var n = Math.abs(jours);
-      return { etat: "rouge", texte: "🔴 " + nom + " : dépassée depuis " + n + (n > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
+      return { etat: "rouge", texte: "🔴 " + nom + " : dépassée depuis " + n + (n > 1 ? " jours" : " jour") + " (" + dateAffichee + ")", jours: jours, date: dateAffichee, nom: nom };
     }
     if (jours === 0) {
-      return { etat: "orange", texte: "🟠 " + nom + " : se termine aujourd'hui (" + dateAffichee + ")" };
+      return { etat: "orange", texte: "🟠 " + nom + " : se termine aujourd'hui (" + dateAffichee + ")", jours: jours, date: dateAffichee, nom: nom };
     }
     if (jours <= 30) {
-      return { etat: "orange", texte: "🟠 " + nom + " : il reste " + jours + (jours > 1 ? " jours" : " jour") + " (" + dateAffichee + ")" };
+      return { etat: "orange", texte: "🟠 " + nom + " : il reste " + jours + (jours > 1 ? " jours" : " jour") + " (" + dateAffichee + ")", jours: jours, date: dateAffichee, nom: nom };
     }
-    return { etat: "vert", texte: "🟢 " + nom + " : valable jusqu'au " + dateAffichee };
+    return { etat: "vert", texte: "🟢 " + nom + " : valable jusqu'au " + dateAffichee, jours: jours, date: dateAffichee, nom: nom };
   }
 
   // Choisit la pire couleur parmi plusieurs états
@@ -171,6 +176,78 @@
       if (e && ordre[e] > ordre[pire]) pire = e;
     });
     return pire;
+  }
+
+  // Transforme le contact en numéro WhatsApp (chiffres seulement) ou rien
+  function numeroWhatsApp(contact) {
+    if (!contact || contact.indexOf("@") !== -1) return null;
+    var n = String(contact).replace(/[^0-9]/g, "");
+    if (n.indexOf("00") === 0) n = n.slice(2);
+    if (n.length === 8) n = INDICATIF_PAR_DEFAUT + n;
+    if (n.length < 10 || n.length > 15) return null;
+    return n;
+  }
+
+  // Écrit le message WhatsApp : seulement ce qui est en orange ou en rouge
+  function messageWhatsApp(v, a, ass, vis) {
+    var titre = v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : "");
+    var lignes = [];
+    var urgent = false;
+    if (a.etat === "rouge" || a.etat === "orange") {
+      urgent = true;
+      if (a.kmRestants !== null) {
+        if (a.kmRestants > 0) {
+          lignes.push("- Vidange : il reste " + a.kmRestants + " " + a.unite + " avant la prochaine.");
+        } else {
+          lignes.push("- Vidange : en retard de " + Math.abs(a.kmRestants) + " " + a.unite + ".");
+        }
+      }
+      if (a.echeance) {
+        lignes.push("- Vidange : à faire avant le " + a.echeance.toLocaleDateString("fr-FR") + ".");
+      }
+    } else if (a.etat === "gris") {
+      lignes.push("- Vidange : donne-moi ton kilométrage et la date de ta dernière vidange.");
+    }
+    [ass, vis].forEach(function (d) {
+      if (d && (d.etat === "rouge" || d.etat === "orange")) {
+        urgent = true;
+        if (d.jours < 0) {
+          lignes.push("- " + d.nom + " : dépassée depuis " + Math.abs(d.jours) + " jour(s) (" + d.date + ").");
+        } else if (d.jours === 0) {
+          lignes.push("- " + d.nom + " : se termine aujourd'hui (" + d.date + ").");
+        } else {
+          lignes.push("- " + d.nom + " : se termine dans " + d.jours + " jour(s) (" + d.date + ").");
+        }
+      }
+    });
+    var texte = "Bonjour, à propos de ta " + titre + " :\n";
+    if (lignes.length === 0) {
+      texte += "Tout est à jour pour le moment. Je te préviens avant la prochaine échéance.";
+    } else {
+      texte += lignes.join("\n");
+    }
+    if (urgent) texte += "\nPasse au garage pour t'en occuper.";
+    return texte;
+  }
+
+  // Bouton « Prévenir sur WhatsApp »
+  function construireWhatsApp(v, a, ass, vis, parent) {
+    var zone = document.createElement("div");
+    zone.className = "wazone";
+    var num = numeroWhatsApp(v.contact_rappel);
+    if (!num) {
+      ajouter(zone, "wa-info", "Pas de numéro WhatsApp enregistré pour cette voiture.");
+    } else {
+      var lien = document.createElement("a");
+      lien.className = "wa";
+      lien.textContent = "Prévenir sur WhatsApp";
+      lien.href = "https://wa.me/" + num + "?text=" + encodeURIComponent(messageWhatsApp(v, a, ass, vis));
+      lien.target = "_blank";
+      lien.rel = "noopener";
+      zone.appendChild(lien);
+      ajouter(zone, "wa-info", "Le message s'ouvre dans WhatsApp. Tu peux le changer avant d'envoyer.");
+    }
+    parent.appendChild(zone);
   }
 
   // Enregistre le nouveau kilométrage et la date du jour
@@ -382,44 +459,4 @@
         var km = a.kmRestants > 0 ? ("Il reste " + a.kmRestants + " " + a.unite) : ("Dépassé de " + Math.abs(a.kmRestants) + " " + a.unite);
         ajouter(c, "info", km + " avant la prochaine vidange.");
       }
-      ajouter(c, "info", "Vidange tous les " + a.inter + " " + a.unite + " ou " + INTERVALLE_MOIS + " mois.");
-      if (a.echeance) {
-        ajouter(c, "info", "Date limite : " + a.echeance.toLocaleDateString("fr-FR"));
-      }
-      if (ass) ajouter(c, "info d-" + ass.etat, ass.texte);
-      if (vis) ajouter(c, "info d-" + vis.etat, vis.texte);
-      if (v.canal_rappel) {
-        ajouter(c, "info", "Rappels par : " + v.canal_rappel + (v.contact_rappel ? " (" + v.contact_rappel + ")" : ""));
-      }
-      var zone = document.createElement("div");
-      zone.className = "maj";
-      var champ = document.createElement("input");
-      champ.type = "number";
-      champ.placeholder = "Ton compteur affiche (" + a.unite + ")";
-      zone.appendChild(champ);
-      var bouton = document.createElement("button");
-      bouton.textContent = "Mettre à jour mon kilométrage";
-      bouton.onclick = function () { mettreAJour(v, champ, bouton); };
-      zone.appendChild(bouton);
-      if (retour && retour.id === v.id) {
-        ajouter(zone, retour.ok ? "retour-ok" : "retour-err", retour.texte);
-      }
-      c.appendChild(zone);
-      construireVidange(v, a, c);
-      cartes.appendChild(c);
-    });
-    retour = null;
-    retourV = null;
-  }
-
-  client.auth.getSession().then(function (r) {
-    if (r.data.session) {
-      document.getElementById("contenu").style.display = "block";
-      charger();
-    } else {
-      document.getElementById("non-connecte").style.display = "block";
-    }
-  });
-</script>
-</body>
-</html>
+   
