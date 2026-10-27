@@ -9,8 +9,9 @@
   .page { padding: 20px; max-width: 480px; margin: 0 auto; }
   h1, h2 { text-align: center; }
   label { display: block; margin-top: 14px; font-weight: bold; }
-  input[type=text], input[type=number], input[type=date], select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 18px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
-  .choix { display: block; margin-top: 10px; padding: 14px; background: #fff; border: 1px solid #b0bec5; border-radius: 10px; font-weight: normal; }
+  input[type=text], input[type=date], select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 18px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
+  .choix { display: block; margin-top: 10px; padding: 14px; background: #fff; border: 2px solid #b0bec5; border-radius: 10px; font-weight: normal; cursor: pointer; }
+  .choix.on { border-color: #1565c0; background: #e3f2fd; }
   .choix input { margin-right: 8px; }
   button { display: block; width: 100%; margin-top: 14px; padding: 14px; font-size: 18px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
   button.gris { background: #607d8b; }
@@ -29,7 +30,7 @@
     <label for="modele">Modèle</label>
     <input id="modele" type="text" placeholder="Hilux">
     <label for="km">Kilométrage actuel (km)</label>
-    <input id="km" type="number" inputmode="numeric">
+    <input id="km" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ex : 50000">
     <label>Tu roules comment ?</label>
     <label class="choix"><input type="radio" name="usage" value="peu">Peu (perso, 30 km par jour)</label>
     <label class="choix"><input type="radio" name="usage" value="beaucoup">Beaucoup (travail taxi ou livraison, 120 km par jour)</label>
@@ -38,7 +39,7 @@
   <div id="ecran-b" style="display:none">
     <h2>Étape 2 sur 2</h2>
     <label for="vk">Km de ta dernière vidange</label>
-    <input id="vk" type="number" inputmode="numeric">
+    <input id="vk" type="text" inputmode="numeric" pattern="[0-9]*">
     <p class="note">Si tu ne sais pas, laisse vide.</p>
     <label for="assurance">Date de fin de l'assurance</label>
     <input id="assurance" type="date">
@@ -72,7 +73,7 @@ function dateISO(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).
 function suivant() {
   var usage = document.querySelector('input[name="usage"]:checked');
   if (!val("marque") || !val("modele")) { dire("Écris la marque et le modèle."); return; }
-  if (val("km") === "" || Number(val("km")) < 0) { dire("Écris le kilométrage de ton compteur."); return; }
+  if (val("km") === "") { dire("Écris le kilométrage de ton compteur."); return; }
   if (!usage) { dire("Réponds à la question : Tu roules comment ?"); return; }
   dire("");
   ecranA.style.display = "none";
@@ -113,9 +114,27 @@ async function enregistrer() {
   if (r.error) { bouton.disabled = false; dire("Erreur : " + r.error.message); return; }
   window.location.href = "tableau.html";
 }
+function chiffres(id) {
+  var c = document.getElementById(id);
+  c.addEventListener("input", function () { c.value = c.value.replace(/\D/g, ""); });
+}
+chiffres("km");
+chiffres("vk");
+function marquerChoix() {
+  document.querySelectorAll(".choix").forEach(function (l) {
+    l.classList.toggle("on", l.querySelector("input").checked);
+  });
+}
+document.querySelectorAll(".choix").forEach(function (l) {
+  l.addEventListener("click", function () {
+    l.querySelector("input").checked = true;
+    marquerChoix();
+  });
+});
 document.getElementById("suivant").addEventListener("click", suivant);
 document.getElementById("retour").addEventListener("click", retour);
 document.getElementById("enregistrer").addEventListener("click", enregistrer);
+marquerChoix();
 sb.auth.getSession().then(function (s) {
   if (!s.data.session) window.location.href = "connexion.html";
 });
