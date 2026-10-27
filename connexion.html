@@ -6,99 +6,73 @@
 <title>Connexion - Ma voiture et moi</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
-  .page { padding: 20px; max-width: 480px; margin: 0 auto; text-align: center; }
-  input { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin: 8px 0; }
-  button.grand { display: block; width: 100%; margin: 12px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
+  h1, h2 { text-align: center; }
+  label { display: block; margin-top: 14px; font-weight: bold; }
+  input { width: 100%; box-sizing: border-box; padding: 14px; font-size: 18px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; }
+  button { display: block; width: 100%; margin-top: 14px; padding: 14px; font-size: 18px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
   button.gris { background: #607d8b; }
-  #message { font-size: 16px; min-height: 24px; }
+  button:disabled { background: #90a4ae; }
+  #message { margin-top: 14px; font-size: 16px; min-height: 24px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="page">
   <h1>🚗 Ma voiture et moi</h1>
-
-  <div id="formulaire">
-    <h2>Inscription / Connexion</h2>
-    <input id="email" type="email" placeholder="Ton e-mail">
-    <input id="mdp" type="password" placeholder="Mot de passe (6 caractères minimum)">
-    <button class="grand" onclick="inscrire()">Créer mon compte</button>
-    <button class="grand gris" onclick="connecter()">Me connecter</button>
-  </div>
-
-  <div id="connecte" style="display:none">
-    <h2>Bienvenue !</h2>
-    <p id="qui"></p><a href="voiture.html" style="display:block;margin:12px 0;padding:16px;text-align:center;font-size:18px;background:#2e7d32;color:#fff;border-radius:12px;text-decoration:none">Enregistrer ma voiture</a>
-    <button class="grand gris" onclick="deconnecter()">Me déconnecter</button>
-  </div>
-
-  <p id="message"></p>
+  <h2>Ton compte</h2>
+  <label for="numero">Numéro WhatsApp</label>
+  <input id="numero" type="tel" inputmode="tel" placeholder="70 12 34 56">
+  <label for="mdp">Mot de passe (6 caractères minimum)</label>
+  <input id="mdp" type="password">
+  <button id="creer">Créer mon compte</button>
+  <button id="entrer" class="gris">J'ai déjà un compte</button>
+  <div id="message"></div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
-  var client = supabase.createClient(
-    "https://duwvhjhajgzkizfsrscx.supabase.co",
-    "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
-  );
+var sb = supabase.createClient(
+  "https://duwvhjhajgzkizfsrscx.supabase.co",
+  "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+);
+var DOMAINE = "ma-voiture-et-moi.github.io";
+var zoneMessage = document.getElementById("message");
 
-  function dire(texte, ok) {
-    var m = document.getElementById("message");
-    m.textContent = texte;
-    m.style.color = ok ? "#2e7d32" : "#c62828";
-  }
+function dire(t) { zoneMessage.textContent = t; }
+function numeroPropre() {
+  var n = document.getElementById("numero").value.replace(/\D/g, "");
+  if (n.indexOf("00") === 0) n = n.slice(2);
+  if (n.length === 8) n = "226" + n;
+  if (n.length < 10 || n.length > 15) return "";
+  return n;
+}
 
-  function montrer(user) {
-    document.getElementById("formulaire").style.display = "none";
-    document.getElementById("connecte").style.display = "block";
-    document.getElementById("qui").textContent = "Connecté : " + user.email;
-  }
+function texteErreur(m) {
+  if (m.indexOf("already") >= 0) return "Ce numéro a déjà un compte. Appuie sur « J'ai déjà un compte ».";
+  if (m.indexOf("Invalid login") >= 0) return "Numéro ou mot de passe faux.";
+  return "Erreur : " + m;
+}
 
-  async function inscrire() {
-    var email = document.getElementById("email").value.trim();
-    var mdp = document.getElementById("mdp").value;
-    if (!email || mdp.length < 6) {
-      dire("Écris ton e-mail et un mot de passe de 6 caractères minimum.", false);
-      return;
-    }
-    var r = await client.auth.signUp({ email: email, password: mdp });
-    if (r.error) {
-      if (r.error.message.indexOf("already") !== -1) {
-        dire("Cet e-mail a déjà un compte. Appuie sur « Me connecter ».", false);
-      } else {
-        dire("Erreur : " + r.error.message, false);
-      }
-      return;
-    }
-    if (r.data.session) {
-      montrer(r.data.user);
-      dire("Compte créé. Bienvenue !", true);
-    } else {
-      dire("Compte créé. Vérifie ton e-mail pour confirmer.", true);
-    }
-  }
+async function envoyer(creation) {
+  var n = numeroPropre();
+  var mdp = document.getElementById("mdp").value;
+  if (!n) { dire("Écris ton numéro WhatsApp (8 chiffres)."); return; }
+  if (mdp.length < 6) { dire("Le mot de passe doit avoir au moins 6 caractères."); return; }
+  dire("Un instant...");
+  var r;
+  try {
+    if (creation) r = await sb.auth.signUp({ email: "n" + n + "@" + DOMAINE, password: mdp });
+    else r = await sb.auth.signInWithPassword({ email: "n" + n + "@" + DOMAINE, password: mdp });
+  } catch (e) { dire("Erreur : vérifie ta connexion internet."); return; }
+  if (r.error) { dire(texteErreur(r.error.message)); return; }
+  if (!r.data.session) { dire("Compte créé, mais Supabase attend une confirmation. À vérifier."); return; }
+  window.location.href = "tableau.html";
+}
 
-  async function connecter() {
-    var email = document.getElementById("email").value.trim();
-    var mdp = document.getElementById("mdp").value;
-    var r = await client.auth.signInWithPassword({ email: email, password: mdp });
-    if (r.error) {
-      dire("E-mail ou mot de passe incorrect.", false);
-      return;
-    }
-    montrer(r.data.user);
-    dire("Connexion réussie.", true);
-  }
-
-  async function deconnecter() {
-    await client.auth.signOut();
-    document.getElementById("formulaire").style.display = "block";
-    document.getElementById("connecte").style.display = "none";
-    dire("Tu es déconnecté.", true);
-  }
-
-  client.auth.getSession().then(function (r) {
-    if (r.data.session) { montrer(r.data.session.user); }
-  });
+document.getElementById("creer").addEventListener("click", function () { envoyer(true); });
+document.getElementById("entrer").addEventListener("click", function () { envoyer(false); });
+sb.auth.getSession().then(function (s) {
+  if (s.data.session) window.location.href = "tableau.html";
+});
 </script>
 </body>
-  </html>
+</html>
