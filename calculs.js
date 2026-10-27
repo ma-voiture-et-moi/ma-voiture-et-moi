@@ -10,6 +10,9 @@ MVM.TABLE_HUILE = {
   synthetique: { essence: 10000, diesel: 8000 },
   inconnue: { essence: 5000, diesel: 5000 }
 };
+// Usage : km roulés par jour (estimation) et jours avant de demander une mise à jour
+MVM.KM_PAR_JOUR = { peu: 30, beaucoup: 120 };
+MVM.JOURS_MAJ = { peu: 30, beaucoup: 14 };
 
 // Unité du compteur : 'km' ou 'miles'
 MVM.unite = function (v) {
@@ -72,19 +75,46 @@ MVM.nombre = function (n) {
   return Math.round(n).toLocaleString("fr-FR");
 };
 
-// Vidange
+// Jours depuis la dernière mise à jour du kilométrage (null si inconnu)
+MVM.joursDepuisMaj = function (v) {
+  var d = MVM.lireDate(v.kilometrage_maj);
+  if (!d) return null;
+  return Math.max(0, MVM.joursEntre(d, MVM.aujourdhui()));
+};
+
+// Kilométrage estimé : km actuel + jours passés x km par jour (si l'usage est connu)
+MVM.kmEstime = function (v) {
+  var reel = Number(v.kilometrage);
+  var parJour = MVM.KM_PAR_JOUR[v.usage_vehicule];
+  var jours = MVM.joursDepuisMaj(v);
+  if (v.kilometrage == null || !parJour || jours === null) {
+    return { km: reel, estime: false, jours: jours };
+  }
+  if (MVM.unite(v) === "miles") parJour = parJour / MVM.KM_PAR_MILE;
+  return { km: Math.round(reel + jours * parJour), estime: true, jours: jours };
+};
+
+// Faut-il demander une mise à jour du kilométrage ?
+MVM.besoinMaj = function (v) {
+  var limite = MVM.JOURS_MAJ[v.usage_vehicule];
+  var jours = MVM.joursDepuisMaj(v);
+  if (!limite || jours === null) return { besoin: false, jours: jours };
+  return { besoin: jours > limite, jours: jours };
+};
+
+// Vidange : km_restant = intervalle - (km_actuel - km_derniere_vidange)
 MVM.vidange = function (v) {
   var unite = MVM.unite(v);
   var dernier = v.derniere_vidange_km;
-  var actuel = v.kilometrage;
-  if (dernier == null || actuel == null) {
+  if (dernier == null || v.kilometrage == null) {
     return { couleur: "gris", phrase: "Vidange : informations manquantes." };
   }
-  if (Number(dernier) > Number(actuel)) {
+  if (Number(dernier) > Number(v.kilometrage)) {
     return { couleur: "gris", phrase: "Vérifie tes kilométrages." };
   }
+  var est = MVM.kmEstime(v);
   var intervalle = Number(v.intervalle_km) || MVM.intervalleParDefaut(unite);
-  var restants = Number(dernier) + intervalle - Number(actuel);
+  var restants = intervalle - (est.km - Number(dernier));
   var dateVidange = MVM.lireDate(v.derniere_vidange_date);
   var jours = null;
   if (dateVidange) {
@@ -93,10 +123,12 @@ MVM.vidange = function (v) {
   var couleur = "vert";
   if (restants <= MVM.seuil(unite) || (jours !== null && jours <= MVM.JOURS_ORANGE)) couleur = "orange";
   if (restants <= 0 || (jours !== null && jours < 0)) couleur = "rouge";
+  var env = est.estime ? "environ " : "";
+  var fin = est.estime ? " (estimé)." : ".";
   var phrase;
-  if (restants > 0) phrase = "Il reste " + MVM.nombre(restants) + " " + unite + " avant la vidange.";
+  if (restants > 0) phrase = "Il reste " + env + MVM.nombre(restants) + " " + unite + " avant la vidange" + fin;
   else if (restants === 0) phrase = "La vidange est à faire maintenant.";
-  else phrase = "Vidange dépassée de " + MVM.nombre(-restants) + " " + unite + ".";
+  else phrase = "Vidange dépassée " + (est.estime ? "d'environ " : "de ") + MVM.nombre(-restants) + " " + unite + fin;
   if (jours !== null && jours < 0) phrase += " Plus de " + MVM.MOIS + " mois depuis la dernière vidange.";
   else if (jours !== null && jours <= MVM.JOURS_ORANGE) phrase += " Date limite dans " + jours + " jour(s).";
   return { couleur: couleur, phrase: phrase };
@@ -126,7 +158,11 @@ MVM.analyser = function (v) {
   var vid = MVM.vidange(v);
   var ass = MVM.echeance("Assurance", v.assurance_fin);
   var vis = MVM.echeance("Visite technique", v.visite_technique_fin);
-  return { vidange: vid, assurance: ass, visite: vis, couleur: MVM.pire([vid.couleur, ass.couleur, vis.couleur]) };
+  return {
+    vidange: vid, assurance: ass, visite: vis,
+    maj: MVM.besoinMaj(v), estime: MVM.kmEstime(v),
+    couleur: MVM.pire([vid.couleur, ass.couleur, vis.couleur])
+  };
 };
 
 // WhatsApp
