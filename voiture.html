@@ -3,297 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ma voiture - Ma voiture et moi</title>
+<title>Ajouter une voiture - Ma voiture et moi</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
   .page { padding: 20px; max-width: 480px; margin: 0 auto; }
   h1, h2 { text-align: center; }
-  label { display: block; margin-top: 12px; font-weight: bold; font-size: 15px; }
-  .aide { font-size: 13px; color: #546e7a; margin-top: 4px; }
-  input, select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 16px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
-  button.grand { display: block; width: 100%; margin: 18px 0; padding: 16px; font-size: 18px; border: none; border-radius: 12px; background: #1565c0; color: #fff; }
-  button.grand:disabled { background: #90a4ae; }
-  button.suppr { margin-top: 10px; padding: 10px 14px; font-size: 15px; border: none; border-radius: 8px; background: #c62828; color: #fff; }
-  button.suppr:disabled { background: #90a4ae; }
-  a.lien { display: block; text-align: center; padding: 14px; color: #1565c0; font-size: 16px; }
-  #message { text-align: center; font-size: 16px; min-height: 24px; }
-  .carte { background: #fff; border-radius: 12px; padding: 14px; margin: 10px 0; border-left: 8px solid #1565c0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  .carte b { font-size: 18px; }
+  label { display: block; margin-top: 14px; font-weight: bold; }
+  input[type=text], input[type=number], input[type=date], select { width: 100%; box-sizing: border-box; padding: 14px; font-size: 18px; border: 1px solid #b0bec5; border-radius: 10px; margin-top: 6px; background: #fff; }
+  .choix { display: block; margin-top: 10px; padding: 14px; background: #fff; border: 1px solid #b0bec5; border-radius: 10px; font-weight: normal; }
+  .choix input { margin-right: 8px; }
+  button { display: block; width: 100%; margin-top: 14px; padding: 14px; font-size: 18px; border: none; border-radius: 10px; background: #1565c0; color: #fff; }
+  button.gris { background: #607d8b; }
+  button:disabled { background: #90a4ae; }
+  .note { font-size: 14px; color: #546e7a; margin-top: 4px; }
+  #message { margin-top: 14px; font-size: 16px; min-height: 24px; text-align: center; color: #c62828; }
 </style>
 </head>
 <body>
 <div class="page">
-  <h1>🚗 Ma voiture</h1>
-
-  <div id="non-connecte" style="display:none">
-    <p style="text-align:center">Tu dois d'abord te connecter.</p>
-    <a class="lien" href="connexion.html">Aller à la page de connexion</a>
+  <h1>🚗 Ajouter ma voiture</h1>
+  <div id="ecran-a">
+    <h2>Étape 1 sur 2</h2>
+    <label for="marque">Marque</label>
+    <input id="marque" type="text" placeholder="Toyota">
+    <label for="modele">Modèle</label>
+    <input id="modele" type="text" placeholder="Hilux">
+    <label for="km">Kilométrage actuel (km)</label>
+    <input id="km" type="number" inputmode="numeric">
+    <label>Tu roules comment ?</label>
+    <label class="choix"><input type="radio" name="usage" value="peu">Peu (perso, 30 km par jour)</label>
+    <label class="choix"><input type="radio" name="usage" value="beaucoup">Beaucoup (travail taxi ou livraison, 120 km par jour)</label>
+    <button id="suivant">Suivant</button>
   </div>
-
-  <div id="contenu" style="display:none">
-    <h2>Enregistrer ma voiture</h2>
-
-    <label>Marque</label>
-    <input id="marque" placeholder="Toyota, Peugeot...">
-    <label>Modèle</label>
-    <input id="modele" placeholder="Corolla, 206...">
-    <label>Année</label>
-    <input id="annee" type="number" placeholder="2012">
-    <label>Carburant</label>
-    <select id="carburant" onchange="proposer()">
-      <option value="essence">Essence</option>
-      <option value="diesel">Diesel</option>
+  <div id="ecran-b" style="display:none">
+    <h2>Étape 2 sur 2</h2>
+    <label for="vk">Km de ta dernière vidange</label>
+    <input id="vk" type="number" inputmode="numeric">
+    <p class="note">Si tu ne sais pas, laisse vide.</p>
+    <label for="assurance">Date de fin de l'assurance</label>
+    <input id="assurance" type="date">
+    <label for="visite">Date de fin de la visite technique</label>
+    <input id="visite" type="date">
+    <label for="huile">Type d'huile</label>
+    <select id="huile">
+      <option value="Inconnue">Je ne sais pas</option>
+      <option value="Minérale">Minérale</option>
+      <option value="Semi-synthétique">Semi-synthétique</option>
+      <option value="Synthétique">Synthétique</option>
     </select>
-    <label>Ton compteur affiche en :</label>
-    <select id="unite" onchange="changerUnite()">
-      <option value="km">Kilomètres (km)</option>
-      <option value="miles">Miles</option>
-    </select>
-    <div class="aide">Les voitures venues d'Angleterre ou des États-Unis affichent souvent des miles.</div>
-    <label>Kilométrage actuel (<span class="u">km</span>)</label>
-    <input id="kilometrage" type="number" placeholder="150000">
-    <label>Plaque d'immatriculation (facultatif)</label>
-    <input id="plaque" placeholder="Ta plaque">
-    <label>Date de la dernière vidange</label>
-    <input id="vidange_date" type="date">
-    <label>Kilométrage de la dernière vidange (<span class="u">km</span>)</label>
-    <input id="vidange_km" type="number" placeholder="145000">
-    <label>Quelle huile utilises-tu ?</label>
-    <select id="huile" onchange="proposer()">
-      <option value="">Choisis ton huile</option>
-      <option value="minerale">Minérale</option>
-      <option value="semi">Semi-synthétique</option>
-      <option value="synthetique">Synthétique</option>
-      <option value="inconnue">Je ne sais pas</option>
-    </select>
-    <div class="aide">C'est écrit sur le bidon d'huile.</div>
-    <label>Tous les combien de <span class="u">km</span> changes-tu ton huile ?</label>
-    <input id="intervalle" type="number" placeholder="5000" oninput="noterIntervalle()">
-    <div class="aide" id="note-huile"></div>
-    <div class="aide">Regarde sur ton bidon d'huile ou dans le carnet de ta voiture. Si tu ne sais pas, laisse vide : on prendra 5000 km (environ 3100 miles).</div>
-    <label>Date de fin de l'assurance (facultatif)</label>
-    <input id="assurance_fin" type="date">
-    <label>Date de fin de la visite technique (facultatif)</label>
-    <input id="visite_fin" type="date">
-    <label>Comment veux-tu recevoir tes rappels ?</label>
-    <select id="canal">
-      <option value="email">E-mail</option>
-      <option value="whatsapp">WhatsApp</option>
-      <option value="sms">SMS</option>
-    </select>
-    <label>Ton e-mail ou ton numéro pour les rappels</label>
-    <input id="contact" placeholder="E-mail ou numéro avec l'indicatif du pays">
-
-    <button class="grand" id="btn-enregistrer" onclick="enregistrer()">Enregistrer ma voiture</button>
-    <p id="message"></p>
-
-    <h2>Mes voitures</h2>
-    <div id="liste"></div>
-    <a class="lien" href="tableau.html">Voir mon tableau de bord</a>
-    <a class="lien" href="connexion.html">Retour à mon compte</a>
+    <button id="enregistrer">Enregistrer ma voiture</button>
+    <button id="retour" class="gris">Retour</button>
   </div>
+  <div id="message"></div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="calculs.js"></script>
 <script>
-  var client = supabase.createClient(
-    "https://duwvhjhajgzkizfsrscx.supabase.co",
-    "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
-  );
-
-  var enCours = false;
-  var intervalleModifie = false;
-  var KM_PAR_MILE = 1.609344;
-
-  // Estimations générales en km (pas des données du constructeur)
-  var INTERVALLES = {
-    minerale:    { essence: 5000,  diesel: 4000 },
-    semi:        { essence: 7500,  diesel: 6000 },
-    synthetique: { essence: 10000, diesel: 8000 },
-    inconnue:    { essence: 5000,  diesel: 5000 }
+var sb = supabase.createClient(
+  "https://duwvhjhajgzkizfsrscx.supabase.co",
+  "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+);
+var ecranA = document.getElementById("ecran-a");
+var ecranB = document.getElementById("ecran-b");
+var zone = document.getElementById("message");
+function dire(t) { zone.textContent = t; }
+function val(id) { return document.getElementById(id).value.trim(); }
+function dateISO(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+function suivant() {
+  var usage = document.querySelector('input[name="usage"]:checked');
+  if (!val("marque") || !val("modele")) { dire("Écris la marque et le modèle."); return; }
+  if (val("km") === "" || Number(val("km")) < 0) { dire("Écris le kilométrage de ton compteur."); return; }
+  if (!usage) { dire("Réponds à la question : Tu roules comment ?"); return; }
+  dire("");
+  ecranA.style.display = "none";
+  ecranB.style.display = "block";
+}
+function retour() {
+  ecranB.style.display = "none";
+  ecranA.style.display = "block";
+  dire("");
+}
+async function enregistrer() {
+  var bouton = document.getElementById("enregistrer");
+  var km = Number(val("km"));
+  var vk = val("vk");
+  if (vk !== "" && Number(vk) > km) { dire("Vérifie tes kilométrages : la vidange est plus grande que le compteur."); return; }
+  var s = await sb.auth.getSession();
+  if (!s.data.session) { window.location.href = "connexion.html"; return; }
+  var user = s.data.session.user;
+  var m = String(user.email || "").match(/^n(\d+)@/);
+  var huile = val("huile");
+  var voiture = {
+    user_id: user.id,
+    marque: val("marque"),
+    modele: val("modele"),
+    kilometrage: km,
+    kilometrage_maj: dateISO(new Date()),
+    usage_vehicule: document.querySelector('input[name="usage"]:checked').value,
+    type_huile: huile,
+    intervalle_km: MVM.estimerIntervalle(huile, "essence", "km"),
+    contact_rappel: m ? m[1] : null,
+    assurance_fin: val("assurance") || null,
+    visite_technique_fin: val("visite") || null,
+    derniere_vidange_km: vk === "" ? null : Number(vk)
   };
-  var LIBELLES_HUILE = {
-    minerale: "minérale",
-    semi: "semi-synthétique",
-    synthetique: "synthétique",
-    inconnue: "non précisée"
-  };
-
-  function dire(texte, ok) {
-    var m = document.getElementById("message");
-    m.textContent = texte;
-    m.style.color = ok ? "#2e7d32" : "#c62828";
-  }
-  function texte(id) { return document.getElementById(id).value.trim(); }
-  function ouNull(id) { var v = texte(id); return v === "" ? null : v; }
-  function nombre(id) { var v = texte(id); return v === "" ? null : parseInt(v, 10); }
-
-  // Unité du compteur choisie : "km" ou "miles"
-  function unite() { return texte("unite") === "miles" ? "miles" : "km"; }
-
-  // Convertit un nombre de km dans l'unité du compteur
-  function enUnite(km) {
-    if (unite() === "miles") {
-      return Math.round(km / KM_PAR_MILE / 100) * 100;
-    }
-    return km;
-  }
-
-  // Retient si la personne a écrit son propre chiffre
-  function noterIntervalle() {
-    intervalleModifie = (texte("intervalle") !== "");
-  }
-
-  // Propose un intervalle selon l'huile et le carburant
-  function proposer() {
-    var note = document.getElementById("note-huile");
-    var t = INTERVALLES[texte("huile")];
-    if (!t) { note.textContent = ""; return; }
-    var km = t[texte("carburant")];
-    if (!km) { note.textContent = ""; return; }
-    var valeur = enUnite(km);
-    if (!intervalleModifie) {
-      document.getElementById("intervalle").value = valeur;
-    }
-    note.textContent = "Proposition : " + valeur + " " + unite() + ". Estimation générale, pas une donnée du constructeur. Tu peux changer le chiffre.";
-  }
-
-  // Change les mots « km » / « miles » sur la page
-  function changerUnite() {
-    var u = unite();
-    var spans = document.getElementsByClassName("u");
-    for (var i = 0; i < spans.length; i++) {
-      spans[i].textContent = u;
-    }
-    proposer();
-  }
-
-  function viderFormulaire() {
-    ["marque", "modele", "annee", "kilometrage", "plaque", "vidange_date", "vidange_km", "intervalle", "assurance_fin", "visite_fin", "contact"].forEach(function (id) {
-      document.getElementById(id).value = "";
-    });
-    document.getElementById("huile").value = "";
-    document.getElementById("note-huile").textContent = "";
-    intervalleModifie = false;
-  }
-
-  async function enregistrer() {
-    if (enCours) return;
-    if (!texte("marque") || !texte("modele")) {
-      dire("Écris au moins la marque et le modèle.", false);
-      return;
-    }
-    var km = nombre("kilometrage");
-    var vkm = nombre("vidange_km");
-    if (km !== null && vkm !== null && vkm > km) {
-      dire("Le kilométrage de la dernière vidange ne peut pas être plus grand que le kilométrage actuel.", false);
-      return;
-    }
-    var inter = nombre("intervalle");
-    if (inter !== null && inter <= 0) {
-      dire("L'intervalle de vidange doit être plus grand que 0.", false);
-      return;
-    }
-    enCours = true;
-    var bouton = document.getElementById("btn-enregistrer");
-    bouton.disabled = true;
-    bouton.textContent = "Enregistrement...";
-    try {
-      var r = await client.from("voitures").insert({
-        marque: texte("marque"),
-        modele: texte("modele"),
-        annee: nombre("annee"),
-        carburant: texte("carburant"),
-        unite_compteur: unite(),
-        kilometrage: km,
-        plaque: ouNull("plaque"),
-        derniere_vidange_date: ouNull("vidange_date"),
-        derniere_vidange_km: vkm,
-        intervalle_km: inter,
-        type_huile: ouNull("huile"),
-        assurance_fin: ouNull("assurance_fin"),
-        visite_technique_fin: ouNull("visite_fin"),
-        canal_rappel: texte("canal"),
-        contact_rappel: ouNull("contact")
-      });
-      if (r.error) {
-        dire("Erreur : " + r.error.message, false);
-      } else {
-        dire("Voiture enregistrée.", true);
-        viderFormulaire();
-        charger();
-      }
-    } catch (e) {
-      dire("Erreur : impossible d'enregistrer. Vérifie ta connexion.", false);
-    }
-    enCours = false;
-    bouton.disabled = false;
-    bouton.textContent = "Enregistrer ma voiture";
-  }
-
-  async function supprimer(id, bouton) {
-    if (!confirm("Tu es sûr de vouloir supprimer cette voiture ?")) return;
-    bouton.disabled = true;
-    bouton.textContent = "Suppression...";
-    try {
-      var r = await client.from("voitures").delete().eq("id", id).select();
-      if (r.error) {
-        dire("Erreur : " + r.error.message, false);
-      } else if (!r.data || r.data.length === 0) {
-        dire("La voiture n'a pas été supprimée (droit manquant dans Supabase).", false);
-      } else {
-        dire("Voiture supprimée.", true);
-      }
-    } catch (e) {
-      dire("Erreur : impossible de supprimer. Vérifie ta connexion.", false);
-    }
-    charger();
-  }
-
-  async function charger() {
-    var r = await client.from("voitures").select("*").order("created_at", { ascending: false });
-    var liste = document.getElementById("liste");
-    liste.innerHTML = "";
-    if (r.error || !r.data || r.data.length === 0) {
-      liste.textContent = "Aucune voiture enregistrée pour l'instant.";
-      return;
-    }
-    r.data.forEach(function (v) {
-      var u = v.unite_compteur === "miles" ? "miles" : "km";
-      var d = document.createElement("div");
-      d.className = "carte";
-      var t = document.createElement("b");
-      t.textContent = v.marque + " " + v.modele + (v.annee ? " (" + v.annee + ")" : "");
-      d.appendChild(t);
-      var infos = [];
-      if (v.kilometrage != null) infos.push(v.kilometrage + " " + u);
-      if (v.carburant) infos.push(v.carburant);
-      if (v.derniere_vidange_date) infos.push("Dernière vidange : " + v.derniere_vidange_date);
-      if (v.type_huile && LIBELLES_HUILE[v.type_huile]) infos.push("Huile : " + LIBELLES_HUILE[v.type_huile]);
-      if (v.intervalle_km) infos.push("Vidange tous les " + v.intervalle_km + " " + u);
-      if (v.assurance_fin) infos.push("Assurance jusqu'au " + v.assurance_fin);
-      if (v.visite_technique_fin) infos.push("Visite technique jusqu'au " + v.visite_technique_fin);
-      if (v.canal_rappel) infos.push("Rappels : " + v.canal_rappel);
-      var p = document.createElement("div");
-      p.textContent = infos.join(" · ");
-      d.appendChild(p);
-      var b = document.createElement("button");
-      b.className = "suppr";
-      b.textContent = "Supprimer";
-      b.onclick = function () { supprimer(v.id, b); };
-      d.appendChild(b);
-      liste.appendChild(d);
-    });
-  }
-
-  client.auth.getSession().then(function (r) {
-    if (r.data.session) {
-      document.getElementById("contenu").style.display = "block";
-      charger();
-    } else {
-      document.getElementById("non-connecte").style.display = "block";
-    }
-  });
+  bouton.disabled = true;
+  dire("Enregistrement...");
+  var r = await sb.from("voitures").insert(voiture);
+  if (r.error) { bouton.disabled = false; dire("Erreur : " + r.error.message); return; }
+  window.location.href = "tableau.html";
+}
+document.getElementById("suivant").addEventListener("click", suivant);
+document.getElementById("retour").addEventListener("click", retour);
+document.getElementById("enregistrer").addEventListener("click", enregistrer);
+sb.auth.getSession().then(function (s) {
+  if (!s.data.session) window.location.href = "connexion.html";
+});
 </script>
 </body>
 </html>
