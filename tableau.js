@@ -18,6 +18,20 @@ function message(texte) {
   appDiv.innerHTML = "<p>" + echapper(texte) + "</p>";
 }
 
+// Grosse alerte tout en haut si le kilométrage n'est plus à jour
+function alertes() {
+  var h = "";
+  voitures.forEach(function (v) {
+    var m = MVM.besoinMaj(v);
+    if (!m.besoin) return;
+    var nom = voitures.length > 1 ? " (" + [v.marque, v.modele].filter(Boolean).join(" ") + ")" : "";
+    h += '<div style="background:#fff3e0;border:2px solid #e8890c;border-radius:12px;padding:12px;margin:14px 0">' +
+      '<p style="font-size:19px;font-weight:bold;margin:0 0 4px 0">🔔 Ça fait ' + m.jours + " jours ! Mets ton km à jour" + echapper(nom) + "</p>" +
+      '<button data-act="km" data-id="' + v.id + '">Mettre à jour mon kilométrage</button></div>';
+  });
+  return h;
+}
+
 // Une carte par voiture
 function ligne(x) {
   return '<p style="margin:4px 0;color:' + COULEURS[x.couleur] + '">● ' + echapper(x.phrase) + "</p>";
@@ -30,6 +44,7 @@ function carte(v) {
   h += "<h2>" + echapper(titre) + "</h2>";
   if (v.plaque) h += "<p>Plaque : " + echapper(v.plaque) + "</p>";
   if (v.kilometrage != null) h += "<p>Compteur : " + MVM.nombre(v.kilometrage) + " " + unite + "</p>";
+  if (a.estime.estime) h += "<p>Compteur estimé : environ " + MVM.nombre(a.estime.km) + " " + unite + " (" + a.estime.jours + " jour(s) depuis ton dernier relevé)</p>";
   h += ligne(a.vidange) + ligne(a.assurance) + ligne(a.visite);
   h += '<button data-act="km" data-id="' + v.id + '">Mettre à jour mon kilométrage</button>';
   h += '<button data-act="vidange" data-id="' + v.id + '">J\'ai fait ma vidange</button>';
@@ -49,7 +64,8 @@ async function charger() {
   afficher();
 }
 function afficher() {
-  var h = '<p><a class="bouton" href="voiture.html">Ajouter une voiture</a> <button data-act="sortir">Déconnexion</button></p>';
+  var h = alertes();
+  h += '<p><a class="bouton" href="voiture.html">Ajouter une voiture</a> <button data-act="sortir">Déconnexion</button></p>';
   if (voitures.length === 0) h += "<p>Aucune voiture enregistrée.</p>";
   voitures.forEach(function (v) { h += carte(v); });
   appDiv.innerHTML = h;
@@ -128,7 +144,10 @@ appDiv.addEventListener("click", function (e) {
   var act = b.getAttribute("data-act");
   var id = b.getAttribute("data-id");
   if (act === "sortir") sortir();
-  else if (act === "km") formKm(id);
+  else if (act === "km") {
+    formKm(id);
+    document.getElementById("zone-" + id).scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   else if (act === "vidange") formVidange(id);
   else if (act === "ok-km") enregistrerKm(id);
   else if (act === "ok-vidange") enregistrerVidange(id);
