@@ -3,19 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#4527A0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234527A0'/%3E%3Ctext x='32' y='40' font-size='22' font-family='Arial' font-weight='bold' text-anchor='middle' fill='white'%3EMVM%3C/text%3E%3C/svg%3E">
 <title>Ma voiture et moi</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
   .page { padding: 20px; max-width: 480px; margin: 0 auto; text-align: center; }
-  h1 { text-align: center; }
+  .badge { width: 88px; height: 88px; border-radius: 20px; background: #4527A0; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 28px; border-bottom: 6px solid #26C6DA; box-sizing: border-box; margin: 40px auto 16px auto; }
+  h1 { color: #4527A0; font-size: 28px; margin: 0 0 14px 0; }
+  p { font-size: 18px; line-height: 1.5; }
+  a.commencer { display: block; box-sizing: border-box; width: 100%; margin-top: 24px; padding: 16px; font-size: 20px; border-radius: 12px; background: #4527A0; color: #fff; text-decoration: none; }
 </style>
 </head>
 <body>
 
 <div id="accueil" class="page">
-  <h1>🚗 Ma voiture et moi</h1>
-  <p>Comprends ta voiture, suis ton entretien, évite les pannes coûteuses.</p>
+  <div class="badge">MVM</div>
+  <h1>Ma voiture et moi</h1>
+  <p>Ne rate plus ta vidange, ton assurance ni ta visite technique.</p>
+  <a class="commencer" href="connexion.html">Commencer</a>
 </div>
-<a href="connexion.html" style="display:block;width:calc(100% - 40px);max-width:440px;margin:20px auto;padding:16px;box-sizing:border-box;text-align:center;font-size:18px;font-family:Arial,sans-serif;background:#1565c0;color:#fff;border-radius:12px;text-decoration:none">Commencer</a>
 </body>
 </html>
