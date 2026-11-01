@@ -58,7 +58,7 @@ function carte(v) {
 async function charger() {
   var s = await sb.auth.getSession();
   if (!s.data.session) { window.location.href = "connexion.html"; return; }
-  var r = await sb.from("voitures").select("*").order("created_at", { ascending: true });
+  var r = await sb.from("voitures").select("*").eq("user_id", s.data.session.user.id).order("created_at", { ascending: true });
   if (r.error) { message("Erreur : " + r.error.message); return; }
   voitures = r.data;
   afficher();
