@@ -3,6 +3,7 @@ var COULEURS = { vert: "#2e9e4f", orange: "#e8890c", rouge: "#d63a2f", gris: "#8
 var HUILES = ["Minérale", "Semi-synthétique", "Synthétique", "Inconnue"];
 var appDiv = document.getElementById("app");
 var voitures = [];
+var estGarage = false;
 
 function echapper(t) {
   return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
@@ -58,6 +59,8 @@ function carte(v) {
 async function charger() {
   var s = await sb.auth.getSession();
   if (!s.data.session) { window.location.href = "connexion.html"; return; }
+  var g = await sb.from("garages").select("user_id").eq("user_id", s.data.session.user.id);
+  estGarage = !g.error && !!g.data && g.data.length > 0;
   var r = await sb.from("voitures").select("*").eq("user_id", s.data.session.user.id).order("created_at", { ascending: true });
   if (r.error) { message("Erreur : " + r.error.message); return; }
   voitures = r.data;
@@ -65,6 +68,7 @@ async function charger() {
 }
 function afficher() {
   var h = alertes();
+  if (estGarage) h += '<a class="bouton" href="garage.html">Mode garage</a>';
   h += '<p><a class="bouton" href="voiture.html">Ajouter une voiture</a> <button data-act="sortir">Déconnexion</button></p>';
   if (voitures.length === 0) h += "<p>Aucune voiture enregistrée.</p>";
   voitures.forEach(function (v) { h += carte(v); });
