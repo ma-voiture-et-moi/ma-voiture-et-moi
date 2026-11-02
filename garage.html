@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#4527A0">
+<title>Mode garage - Ma voiture et moi</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1b2a3a; }
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
+  .logo { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .badge { width: 48px; height: 48px; border-radius: 12px; background: #4527A0; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border-bottom: 4px solid #26C6DA; box-sizing: border-box; }
+  .marque { color: #4527A0; font-weight: bold; font-size: 20px; }
+  h1 { text-align: center; font-size: 22px; margin: 14px 0 6px 0; }
+  .carte { background: #fff; border-radius: 12px; padding: 16px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .carte h2 { margin: 0 0 6px 0; font-size: 19px; color: #4527A0; }
+  .carte p { font-size: 15px; line-height: 1.4; margin: 4px 0; }
+  .resume { text-align: center; font-size: 16px; font-weight: bold; margin: 10px 0; }
+  a.bouton, button { display: block; box-sizing: border-box; width: 100%; margin-top: 8px; padding: 12px; font-size: 16px; border: none; border-radius: 10px; background: #4527A0; color: #fff; text-align: center; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="logo"><div class="badge">MVM</div><div class="marque">Ma voiture et moi</div></div>
+  <h1>Mode garage</h1>
+  <div id="app"><p>Chargement...</p></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="calculs.js"></script>
+<script>
+var sb = supabase.createClient(
+  "https://duwvhjhajgzkizfsrscx.supabase.co",
+  "sb_publishable_u3Rc1lmK6RhhpTsvns5LDw_9Y7tvkba"
+);
+var COULEURS = { vert: "#2e9e4f", orange: "#e8890c", rouge: "#d63a2f", gris: "#8a8f98" };
+var ORDRE = { rouge: 3, orange: 2, gris: 1, vert: 0 };
+var appDiv = document.getElementById("app");
+function echapper(t) {
+  return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function ligne(x) {
+  return '<p style="color:' + COULEURS[x.couleur] + '">● ' + echapper(x.phrase) + "</p>";
+}
+function messageClient(v, a) {
+  var l = [];
+  [a.vidange, a.assurance, a.visite].forEach(function (x) {
+    if (x.couleur === "orange" || x.couleur === "rouge") l.push("- " + x.phrase);
+  });
+  if (a.maj.besoin) l.push("- Ça fait " + a.maj.jours + " jours : envoie-moi ton kilométrage actuel.");
+  if (l.length === 0) return "";
+  var nom = [v.marque, v.modele, v.plaque].filter(Boolean).join(" ");
+  return "Bonjour, ici le garage. Rappel pour ta voiture (" + nom + ") :\n" + l.join("\n");
+}
+function carte(v) {
+  var a = MVM.analyser(v);
+  var usage = v.usage_vehicule === "beaucoup" ? "Beaucoup (taxi, livraison)" : (v.usage_vehicule === "peu" ? "Peu (perso)" : "Usage non précisé");
+  var h = '<div class="carte" style="border-left:8px solid ' + COULEURS[a.couleur] + '">';
+  h += "<h2>" + echapper([v.marque, v.modele, v.annee].filter(Boolean).join(" ")) + "</h2>";
+  h += "<p>" + echapper(usage) + "</p>";
+  if (v.kilometrage != null) h += "<p>Compteur : " + MVM.nombre(v.kilometrage) + " km (dernier relevé il y a " + (a.maj.jours == null ? "?" : a.maj.jours) + " jour(s))</p>";
+  h += ligne(a.vidange) + ligne(a.assurance) + ligne(a.visite);
+  var num = MVM.numeroWhatsApp(v.contact_rappel);
+  var msg = messageClient(v, a);
+  if (!num) h += "<p>Pas de numéro WhatsApp pour ce client.</p>";
+  else if (!msg) h += "<p>Rien à signaler pour le moment.</p>";
+  else h += '<a class="bouton" href="https://wa.me/' + num + "?text=" + encodeURIComponent(msg) + '" target="_blank" rel="noopener">Prévenir le client sur WhatsApp</a>';
+  return h + "</div>";
+}
+function note(a) {
+  return ORDRE[a.couleur] * 10 + (a.maj.besoin ? 1 : 0);
+}
+async function charger() {
+  var s = await sb.auth.getSession();
+  if (!s.data.session) { window.location.href = "connexion.html"; return; }
+  var g = await sb.from("garages").select("user_id").eq("user_id", s.data.session.user.id);
+  if (g.error || !g.data || g.data.length === 0) {
+    appDiv.innerHTML = '<p>Cette page est réservée au garage.</p><a class="bouton" href="tableau.html">Retour à mon tableau</a>';
+    return;
+  }
+  var r = await sb.from("voitures").select("*").order("created_at", { ascending: true });
+  if (r.error) { appDiv.innerHTML = "<p>Erreur : " + echapper(r.error.message) + "</p>"; return; }
+  var liste = r.data.map(function (v) { return { v: v, a: MVM.analyser(v) }; });
+  liste.sort(function (x, y) { return note(y.a) - note(x.a); });
+  var rouges = liste.filter(function (x) { return x.a.couleur === "rouge"; }).length;
+  var oranges = liste.filter(function (x) { return x.a.couleur === "orange"; }).length;
+  var h = '<p class="resume">' + liste.length + " voiture(s) : " + rouges + " rouge(s), " + oranges + " orange(s)</p>";
+  h += '<a class="bouton" href="tableau.html">Mon tableau</a>';
+  liste.forEach(function (x) { h += carte(x.v); });
+  appDiv.innerHTML = h;
+}
+charger();
+</script>
+</body>
+</html>
