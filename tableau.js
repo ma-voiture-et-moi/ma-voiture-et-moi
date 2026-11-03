@@ -49,8 +49,6 @@ function carte(v) {
   h += ligne(a.vidange) + ligne(a.assurance) + ligne(a.visite);
   h += '<button data-act="km" data-id="' + v.id + '">Mettre à jour mon kilométrage</button>';
   h += '<button data-act="vidange" data-id="' + v.id + '">J\'ai fait ma vidange</button>';
-  var lien = MVM.lienWhatsApp(v);
-  if (lien) h += '<a class="bouton" href="' + lien + '" target="_blank" rel="noopener">Prévenir sur WhatsApp</a>';
   h += '<button data-act="supprimer" data-id="' + v.id + '" style="background:#607d8b">Supprimer cette voiture</button>';
   h += '<div class="zone" id="zone-' + v.id + '"></div></div>';
   return h;
