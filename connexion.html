@@ -18,6 +18,7 @@
   button { display: block; width: 100%; margin-top: 14px; padding: 14px; font-size: 18px; border: none; border-radius: 10px; background: #4527A0; color: #fff; }
   button.gris { background: #607d8b; }
   button:disabled { background: #90a4ae; }
+  .note { margin-top: 16px; font-size: 14px; line-height: 1.4; color: #546e7a; text-align: center; }
   #message { margin-top: 14px; font-size: 16px; min-height: 24px; text-align: center; }
 </style>
 </head>
@@ -31,6 +32,7 @@
   <input id="mdp" type="password">
   <button id="creer">Créer mon compte</button>
   <button id="entrer" class="gris">J'ai déjà un compte</button>
+  <p class="note">En créant ton compte, tu acceptes que le garage voie ta voiture et ton numéro WhatsApp pour te prévenir de ton entretien.</p>
   <div id="message"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
