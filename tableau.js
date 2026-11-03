@@ -51,6 +51,7 @@ function carte(v) {
   h += '<button data-act="vidange" data-id="' + v.id + '">J\'ai fait ma vidange</button>';
   var lien = MVM.lienWhatsApp(v);
   if (lien) h += '<a class="bouton" href="' + lien + '" target="_blank" rel="noopener">Prévenir sur WhatsApp</a>';
+  h += '<button data-act="supprimer" data-id="' + v.id + '" style="background:#607d8b">Supprimer cette voiture</button>';
   h += '<div class="zone" id="zone-' + v.id + '"></div></div>';
   return h;
 }
@@ -141,6 +142,21 @@ async function enregistrerVidange(id) {
   await charger();
 }
 
+// Supprimer une voiture (avec une question avant)
+function formSupprimer(id) {
+  var z = document.getElementById("zone-" + id);
+  z.innerHTML = "<p><b>Supprimer cette voiture ? C'est définitif.</b></p>" +
+    '<p id="msg-' + id + '"></p>' +
+    '<button style="background:#d63a2f" data-act="ok-supprimer" data-id="' + id + '">Oui, supprimer</button> <button data-act="annuler">Annuler</button>';
+}
+async function supprimer(id) {
+  var msg = document.getElementById("msg-" + id);
+  var r = await sb.from("voitures").delete().eq("id", id).select();
+  if (r.error) { msg.textContent = "Erreur : " + r.error.message; return; }
+  if (!r.data || r.data.length === 0) { msg.textContent = "La voiture n'a pas été supprimée."; return; }
+  await charger();
+}
+
 // Clics et changements
 appDiv.addEventListener("click", function (e) {
   var b = e.target.closest("button");
@@ -153,6 +169,11 @@ appDiv.addEventListener("click", function (e) {
     document.getElementById("zone-" + id).scrollIntoView({ behavior: "smooth", block: "center" });
   }
   else if (act === "vidange") formVidange(id);
+  else if (act === "supprimer") {
+    formSupprimer(id);
+    document.getElementById("zone-" + id).scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  else if (act === "ok-supprimer") supprimer(id);
   else if (act === "ok-km") enregistrerKm(id);
   else if (act === "ok-vidange") enregistrerVidange(id);
   else if (act === "annuler") afficher();
